@@ -6,6 +6,8 @@ iniMod is a modification for Nightfire which allows the creation of custom AMX g
 Native Functions:
 ================
 
+```
+
 native GetGameTimeLeft();
 native TriggerHudMsg(playerid, text[], duration, towho);
 native SpectatePlayer(playerid, tospectate);
@@ -25,8 +27,12 @@ native FindEntityByClassname(pStartEntity, szName[]);
 native ConsoleCommand(text[]);
 native EDICT_NUM(entity);
 
+```
+
 Public Functions:
 ================
+
+```
 
 forward OnServerChangeMap();
 forward OnClientConnect(playerid);
@@ -38,6 +44,8 @@ forward OnClientUpdate(playerid);
 forward OnClientCommandText(playerid, cmdname[]);
 forward OnClientSpawn(playerid);
 forward OnClientDeath(attacker, receiver);
+
+```
 
 Usage:
 ================
