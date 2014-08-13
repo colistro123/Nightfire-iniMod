@@ -9,7 +9,7 @@ main()
 	print("----------------------------------\n");
 }
 
-new soundsplayed = 0;//
+new soundsplayed = 0;
 new votes[MAX_PLAYERS] = 0;
 new spawntimes[MAX_PLAYERS] = 0;
 new kills[MAX_PLAYERS] = 0;
