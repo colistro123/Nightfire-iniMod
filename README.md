@@ -55,4 +55,16 @@ In order to use iniMod you require to have Nightfire and the latest community pa
 Gamemodes: 
 ================
 
-In order to compile the .pwn gamemodes to AMX, you require the Quincy IDE. The gamemode name is specified inside the iniMod.cfg file.
+In order to compile the ".p" gamemodes to AMX, you require the Quincy IDE. The gamemode name is specified inside the iniMod.cfg file. After that, create a gamemodes folder in your server directory and drop the gamemode there.
+
+iniMod.cfg
+================
+
+This file contains the gamemode name your server will be executing upon start up.
+
+```
+
+gamemode:nightfire //The gamemode name, no need to write ".amx" at the end of it, iniMod does that for you.
+updaterate:100  //This isn't being used at the moment
+
+```
