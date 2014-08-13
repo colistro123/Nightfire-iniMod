@@ -7,7 +7,6 @@ main()
 	print("\n----------------------------------\n");
 	print("  NF Test Script\n");
 	print("----------------------------------\n");
-	SetPlayerHealth(0, 200);
 }
 
 new soundsplayed = 0;
