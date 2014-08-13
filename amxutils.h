@@ -1,3 +1,4 @@
+//Taken from AMXMODX
 #ifndef AMXUTILS_H
 #define AMXUTILS_H
 #include "amx/amxaux.h"
