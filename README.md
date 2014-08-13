@@ -1,5 +1,3 @@
-<img align="centered" src="https://images.indiegogo.com/file_attachments/492549/files/20140408060902-open-source-icon.png?1396962542" alt="iniMod is open source software">
-
 Nightfire-iniMod
 ================
 
