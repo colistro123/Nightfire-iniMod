@@ -1,3 +1,4 @@
+//Taken from AMXMODX
 #include "amxutils.h"
 
 cell* get_amxaddr(AMX *amx,cell amx_addr)
