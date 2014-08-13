@@ -68,3 +68,18 @@ gamemode:nightfire //The gamemode name, no need to write ".amx" at the end of it
 updaterate:100  //This isn't being used at the moment
 
 ```
+
+Other notes:
+================
+
+* The code is indented properly but Github isn't wrapping it up properly, causing it to look unindented, just download the files and when you open it, it'll be indented properly.
+
+
+Thanks to:
+================
+
+* 2GoldenBullets - Who wrote most of the assembly calls and provided me with all the addresses required.
+* AMXMODX - Lots of useful information in there.
+* OllyDBG - Great tool I utilized to reverse engineer the game.
+* Valve - Useful HL1 code that helped me intercept some of the game functions. https://github.com/ValveSoftware/halflife
+* Quake I - The functions are pretty similar to Nightfire with some differences.
