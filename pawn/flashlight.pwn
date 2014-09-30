@@ -5,11 +5,10 @@
 main()
 {
 	print("\n----------------------------------\n");
-	print("  NF Test Script\n");
+	print("  Flashlight Script\n");
 	print("----------------------------------\n");
 }
 
-new soundsplayed = 0;
 new votes[MAX_PLAYERS] = 0;
 new spawntimes[MAX_PLAYERS] = 0;
 new kills[MAX_PLAYERS] = 0;
@@ -18,40 +17,7 @@ new adminlevel[MAX_PLAYERS] = 0;
 new UsingFlashlight[MAX_PLAYERS] = 0;
 new lasttime = 0;
 
-/*
-const a = 10
-const ESoundsInfo: {
-	SoundName = 0,
-	ETimeLeft,
-}
-*/
-/*
-#define ESoundsInfo[
-         //.code,
-         .SoundName{64},
-         //Float: .price
-		 .time
-     ]
-//Sounds
-
-new Sounds[14][ESoundsInfo] = {
-	{"space/SFV_one.wav", 1},
-	{"space/SFV_two.wav", 2},
-	{"space/SFV_three.wav", 3},
-	{"space/SFV_four.wav", 4},
-	{"space/SFV_five.wav", 5},
-	{"space/SFV_six.wav", 6},
-	{"space/SFV_seven.wav", 7},
-	{"space/SFV_eight.wav", 8},
-	{"space/SFV_nine.wav", 9},
-	{"space/SFV_ten.wav", 10},
-	{"CTF/SFV_gen_07.wav", 300},
-	{"CTF/SFV_gen_08.wav", 180},
-	{"CTF/SFV_gen_10.wav", 60},
-	{"CTF/SFV_gen_11.wav", 30}
-}
-*/
-
+#if 0
 new entity_names[][64] = {
 	"weapon_taser",
 	"weapon_flashgrenade",
@@ -133,59 +99,16 @@ new entity_names[][64] = {
 	//"info_ctfspawn",
 	//"worldspawn"
 };
+#endif
 
 public OnServerChangeMap()
 {
-	soundsplayed = 0;
-	PrecacheSound("CTF/SFV_gen_07.wav"); //5 minutes remaining
-    PrecacheSound("CTF/SFV_gen_08.wav"); //3 minutes remaining
-    PrecacheSound("CTF/SFV_gen_10.wav"); //1 minute remaining
-    PrecacheSound("CTF/SFV_gen_11.wav"); //30 seconds remaining
-    PrecacheSound("space/SFV_ten.wav");
-    PrecacheSound("space/SFV_nine.wav");
-    PrecacheSound("space/SFV_eight.wav");
-    PrecacheSound("space/SFV_seven.wav");
-    PrecacheSound("space/SFV_six.wav");
-    PrecacheSound("space/SFV_five.wav");
-    PrecacheSound("space/SFV_four.wav");
-    PrecacheSound("space/SFV_three.wav");
-    PrecacheSound("space/SFV_two.wav");
-    PrecacheSound("space/SFV_one.wav");
-	PrecacheSound("servant_girl/scream3.wav");
-	PrecacheSound("servant_girl/scream1.wav");
-	PrecacheSound("servant_girl/scream2.wav");
-	PrecacheSound("evil_base/klaxon1noloop.wav");
-	PrecacheSound("M/M_Bond_dies.wav");
-	PrecacheSound("common/common.wav");
-	PrecacheSound("common/stinger.wav");
-	PrecacheSound("common/mission_success.wav");
-	PrecacheSound("CTF/MI6_ctf.wav");
-	PrecacheSound("yakuza/die10.wav");
-	PrecacheSound("yakuza/die11.wav");
-	PrecacheGeneric("enemy_helicopter");
-	PrecacheGeneric("enemy_attackcopter");
-	PrecacheGeneric("enemy_pathvan");
-	PrecacheGeneric("enemy_drake");
-	PrecacheGeneric("enemy_generic");
 	//PrecacheModel("models/dart_tip.mdl");
+	return 1;
 }
 public OnMapLoaded()
 {
-	//for(new i=0; i<sizeof(entity_names); i++) {
-	//	findAndRemove(entity_names[i]);
-	//}
-    //SetQueryVar("gametype", "SPECTATE");
-}
-findAndRemove(entityName[]) {
-	new entitynr;
-	new string[128];
-	print(entityName);
-	while(FindEntityByClassname(0, entityName)) {
-		entitynr = FindEntityByClassname(0, entityName);
-		SUB_Remove(entitynr);
-		strformat(string, sizeof(string), false, "%s (%d) entity removed!", entityName, entitynr);
-        print(string);
-	}
+    SetQueryVar("gametype", "Flashlight");
 }
 public OnClientConnect(playerid)
 {
@@ -226,113 +149,17 @@ public OnPluginExit()
 	return 1;
 }
 public OnClientUpdate(playerid) {
-	//printf("OnClientUpdate has been called for %d", playerid);
-	//TriggerHudMsg(playerid, "This server uses iniMod", 5000, 0);
 	new time = Sys_FloatTime();
 	if(UsingFlashlight[playerid] && time - lasttime > 100){
-		new Float: X, Float: Y, Float: Z, Float: lastflash;
+		new Float: X, Float: Y, Float: Z;
 		GetPlayerPos(playerid, X, Y, Z);
 		UTIL_Create_TE_DLIGHT(GetPlayerEdictPtr(playerid), X, Y, Z, 2.0, 300.0, 200, 250, 255, 2, 0.5);
 		lasttime = time;
 	}
 	return 1;
 }
-new lasttick;
 public ServerThink() {
-	new gametimeleft = GetGameTimeLeft();
-	new entityptr;
-	if((tickcount()-lasttick) > 100) {
-		lasttick = tickcount();
-		entityptr = FindRandomEntityPointer();
-		if ( entityptr != 0 ) { playDesiredSound(entityptr, gametimeleft); }
-	}
 	return 1;
-}
-FindRandomEntityPointer() {
-	new entityptr;
-	entityptr = FindEntityByClassname(0, "info_player_start");
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "game_player_equip"); }
-    if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "func_wall"); }
-    if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "func_breakable"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "func_button"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "item_breakable"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "item_grappletarget"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "env_sprite"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "trigger_multiple"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "trigger_once"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "func_ladder"); }
-	if ( entityptr == 0 ) { entityptr = FindEntityByClassname(0, "weapon_dukes"); }
-	if ( entityptr != 0 ) { entityptr = EDICT_NUM(entityptr); }
-	//new string[128];
-	//strformat(string, sizeof(string), false, "Entity Ptr: %d", entityptr);
-    //print(string);
-	return entityptr;
-}
-playDesiredSound(edictptr, gametimeleft) {
-	 //EmitAmbientSound = 	flags, float volume, sound, channel, edict
-	/*
-	for(new i=0; i<sizeof(Sounds); i++) {
-		if(gametimeleft <= Sounds[i][time]) {
-			EmitAmbientSound(0, 1.0, Sounds[i][SoundName], 6, edictptr);
-		}
-	}
-	*/
-	if ( gametimeleft <= 1 && soundsplayed == 13){
-		soundsplayed = 14;
-		EmitAmbientSound(0, 1.0, "space/SFV_one.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 2 && soundsplayed == 12){
-		soundsplayed = 13;
-		EmitAmbientSound(0, 1.0, "space/SFV_two.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 3 && soundsplayed == 11){
-		soundsplayed = 12;
-		EmitAmbientSound(0, 1.0, "space/SFV_three.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 4 && soundsplayed == 10){
-		soundsplayed = 11;
-		EmitAmbientSound(0, 1.0, "space/SFV_four.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 5 && soundsplayed == 9){
-		soundsplayed = 10;
-		EmitAmbientSound(0, 1.0, "space/SFV_five.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 6 && soundsplayed == 8){
-		soundsplayed = 9;
-		EmitAmbientSound(0, 1.0, "space/SFV_six.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 7 && soundsplayed == 7){
-		soundsplayed = 8;
-		EmitAmbientSound(0, 1.0, "space/SFV_seven.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 8 && soundsplayed == 6){
-		soundsplayed = 7;
-		EmitAmbientSound(0, 1.0, "space/SFV_eight.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 9 && soundsplayed == 5){
-		soundsplayed = 6;
-		EmitAmbientSound(0, 1.0, "space/SFV_nine.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 10 && soundsplayed == 4){
-		soundsplayed = 5;
-		EmitAmbientSound(0, 1.0, "space/SFV_ten.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 30 && soundsplayed == 3){
-		soundsplayed = 4;
-		EmitAmbientSound(0, 1.0, "CTF/SFV_gen_11.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 60 && soundsplayed == 2){
-		soundsplayed = 3;
-		EmitAmbientSound(0, 1.0, "CTF/SFV_gen_10.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 180 && soundsplayed == 1){
-		soundsplayed = 2;
-		EmitAmbientSound(0, 1.0, "CTF/SFV_gen_08.wav", 6, edictptr);
-	}
-	if ( gametimeleft <= 300 && soundsplayed == 0){
-		soundsplayed = 1;
-		EmitAmbientSound(0, 1.0, "CTF/SFV_gen_07.wav", 6, edictptr);
-	}
 }
 public OnClientCommandText(playerid, cmdname[]) {
 	new cmd[32][32];
@@ -413,22 +240,11 @@ public OnClientSpawn(playerid) {
 	return 1;
 }
 public OnClientEquip(playerid) {
-	/*
-	new msg[128];
-
-	RemoveAllItems(playerid, 0); //Remove all their items on spawn..
-	GiveNamedItem(playerid, "weapon_kowloon", 1);
-	GiveNamedItem(playerid, "ammo_kowloon", 1);
-
-	strformat(msg, sizeof(msg), false, "You currently have $%d, type /buy to buy a weapon.", money[playerid]);
-	UTIL_ShowMessage(playerid, msg);*/
+	return 1;
 }
 public OnClientDeath(attacker, receiver) {
-	new msg[128];
 	thinkKills(attacker, receiver);
-	/*
-	strformat(msg, sizeof(msg), false, "ID %d has killed you (%d).", attacker, receiver);
-	TriggerHudMsg(receiver, msg, 2, 1);*/
+	return 1;
 }
 thinkKills(attacker, receiver) {
 	#pragma unused receiver
@@ -440,24 +256,18 @@ thinkKills(attacker, receiver) {
 	GetPlayerPos(receiver, X, Y, Z);
 	kills[attacker]++;
 	new leader = getKillsLeader();
+	#pragma unused leader
 	GetClientName(attacker, name, sizeof(name));
-	/*
-	if(attacker == leader) {
-		strformat(msg, sizeof(msg), false, "%s is dominating everyone with %d kills.", name, kills[leader]);
-   		TriggerHudMsg(leader, msg, 2, MSG_BROADCAST);
-	}
-	*/
+
 	Dist = GetPointDistance(px, py, pz, X, Y, Z);
 	Dist = Dist/12; //Otherwise it's way too much, it's not like in samp
 	new amount = 0;
+	#pragma unused amount
 	if(Dist > 100.0) {
 		strformat(msg, sizeof(msg), false, "%s just killed someone from %.2f meters away.", name, Dist);
 		CenterPrint(attacker, msg, MSG_BROADCAST);
 		amount = floatround(Dist*2);
-	}/*
-	money[attacker] += (600 + amount);
-	strformat(msg, sizeof(msg), false, "$%d ($%d)", 600 + amount, money[attacker]);
-    UTIL_ShowMessage(attacker, msg);*/
+	}
 }
 getKillsLeader() {
 	new highest,highestid = -1;
@@ -486,6 +296,7 @@ stock split(const strsrc[], strdest[][], delimiter = '|')
 		i++;
 	}
 }
+#if 0 //Disabled, remove #if 0 and #endif at the bottom to re-enable
 strtok(const string[], &index)
 {
 	new length = strlen(string);
@@ -685,4 +496,4 @@ stock sscanf(string[], format[], {Float,_}:...)
 	while (delim > ' ');
 	return 0;
 }
-
+#endif
