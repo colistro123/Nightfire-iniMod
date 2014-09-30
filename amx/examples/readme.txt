@@ -46,9 +46,6 @@ prun3.c
         The technique by which it achieves this is OS-dependent; this example
         will only compile and run on any OS of the Win32 family.
 
-        Depending on your compiler, you may need to define the constant STDECL
-        on the compiler's command line (or the IDE options).
-
 prun4.c
         The examples do far have only executed function main() in the compiled
         script. This example is a modification of prun1.c that accepts two
@@ -64,7 +61,6 @@ prun5.c
         because in the pursuit of creating a portable sample, I have "hooked"
         the garbage collector on the "debug hook" and this is actually a bad
         idea.
-
         This example also requires the "Better String library", and open source
         library for handling dynamic strings in a safe manner. The "Better
         String library" is made by Paul Hsieh, and it can be found, at the time

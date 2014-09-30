@@ -92,18 +92,22 @@
     <ClCompile Include="amx\amxaux.c" />
     <ClCompile Include="amx\amxcons.c" />
     <ClCompile Include="amx\amxcore.c" />
-    <ClCompile Include="amx\amxfloat.c" />
+    <ClCompile Include="amx\amxfile.c" />
     <ClCompile Include="amx\amxstring.c" />
     <ClCompile Include="amx\amxtime.c" />
     <ClCompile Include="amx\fixed.c" />
+    <ClCompile Include="amx\float.c" />
+    <ClCompile Include="baseentity.cpp" />
     <ClCompile Include="con_commands.cpp" />
     <ClCompile Include="engine.cpp" />
-    <ClCompile Include="format.cpp" />
     <ClCompile Include="gameinterface.cpp" />
     <ClCompile Include="gamemodes.cpp" />
+    <ClCompile Include="gettime.cpp" />
     <ClCompile Include="hooks.cpp" />
     <ClCompile Include="initmod.cpp" />
+    <ClCompile Include="Nightfire-iniMod\format.cpp" />
     <ClCompile Include="player.cpp" />
+    <ClCompile Include="plugins.cpp" />
     <ClCompile Include="precache.cpp" />
     <ClCompile Include="processmemory.cpp" />
     <ClCompile Include="host_cmd.cpp" />
@@ -113,24 +117,29 @@
     <ClInclude Include="amxutils.h" />
     <ClInclude Include="amx\amx.h" />
     <ClInclude Include="amx\amxaux.h" />
-    <ClInclude Include="amx\amxdbg.h" />
     <ClInclude Include="amx\osdefs.h" />
+    <ClInclude Include="amx\prefix.h" />
+    <ClInclude Include="amx\sclinux.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="addresses.h" />
     <ClInclude Include="format.h" />
     <ClInclude Include="gameinterface.h" />
     <ClInclude Include="gamemodes.h" />
+    <ClInclude Include="baseentity.h" />
+    <ClInclude Include="gettime.h" />
     <ClInclude Include="host_cmd.h" />
     <ClInclude Include="hooks.h" />
     <ClInclude Include="con_commands.h" />
     <ClInclude Include="initmod.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="plugins.h" />
     <ClInclude Include="precache.h" />
     <ClInclude Include="processmemory.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="amx\amxFixed.rc" />
+    <None Include="amx\amxdefn.asm" />
+    <None Include="amx\amxexecn.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

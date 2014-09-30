@@ -19,12 +19,12 @@ public:
   }
 
 private:
-  int write(AMX* /*amx*/, const cell params[])
+  write(AMX* amx, cell params[])
   {
     int r = 0;
     char *pstr;
 
-    amx_StrParam_Type(amx, params[1], pstr, char*);
+    amx_StrParam(amx, params[1], pstr);
     if (pstr != NULL)
       r = fprintf(f, "%s", pstr);
     return r;
@@ -33,7 +33,7 @@ private:
   FILE *f;
 
 public:
-  static cell n_write(AMX* amx, const cell params[])
+  static cell n_write(AMX* amx, cell params[])
   {
     std::map<AMX*, LogFile*>::iterator p = lookup.find(amx);
     if (p != lookup.end())

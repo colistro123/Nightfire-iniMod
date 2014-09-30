@@ -10,15 +10,15 @@
 #pragma library Float
 
 /* Different methods of rounding */
-const floatround_method: {
-  floatround_round = 0,
+enum floatround_method {
+  floatround_round,
   floatround_floor,
   floatround_ceil,
   floatround_tozero,
   floatround_unbiased
 }
-const anglemode: {
-  radian = 0,
+enum anglemode {
+  radian,
   degrees,
   grades
 }

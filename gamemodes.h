@@ -19,9 +19,12 @@
 
 using namespace std;
 
-//Disconnect Reasons
+//Disconnect Reasons (Moved to player.h)
+/*
 #define REASON_DISCONNECT		1
 #define REASON_TIMEOUT			2
+#define REASON_MAPCHANGE		3
+*/
 
 class CNetwork {
 public:
@@ -30,16 +33,18 @@ public:
     virtual ~CNetwork() { };
 	//Player and server related - Scripting
 	void OnServerChangeMap();
-	void OnPreClientConnect(cell playerid);
+	void OnMapLoaded();
 	void OnClientConnect(cell playerid);
-	void OnPreClientDisconnect( void );
+	void OnClientReconnect(cell playerid);
 	void OnClientDisconnect(int playerid, int reason); //Reason means: Timeout or normal disconnect
 	int OnClientUpdate(cell playerid); //This function gets called continuously..
 	void OnGameModeInit();
 	int OnServerThink( void );
+	void UpdatePlayers( void );
 	void OnClientCommandText(int playerid, const char* recvcmd);
 	void OnClientDeath(cell attacker, cell receiver);
 	void OnClientSpawn(cell playerid);
+	void OnClientEquip(cell playerid);
 	//Script / Loading related stuff
 	void parseConfigFile( void );
 	void decideParse(char* param1, char* param2);
@@ -60,5 +65,6 @@ private:
     int err;
 	//End of script related stuff
 };
-int AMXAPI amx_GetAddr(AMX *amx,cell amx_addr,cell **phys_addr);
+
+int amx_initNatives(AMX *amx);
 #endif

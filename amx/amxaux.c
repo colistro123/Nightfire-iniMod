@@ -1,6 +1,6 @@
 /*  Support routines for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2003-2011
+ *  Copyright (c) ITB CompuPhase, 2003-2009
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxaux.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: amxaux.c 4125 2009-06-15 16:51:06Z thiadmer $
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +22,7 @@
 #include "amx.h"
 #include "amxaux.h"
 
-size_t AMXAPI aux_ProgramSize(const char *filename)
+size_t AMXAPI aux_ProgramSize(char *filename)
 {
   FILE *fp;
   AMX_HEADER hdr;
@@ -37,7 +37,7 @@ size_t AMXAPI aux_ProgramSize(const char *filename)
   return (hdr.magic==AMX_MAGIC) ? (size_t)hdr.stp : 0;
 }
 
-int AMXAPI aux_LoadProgram(AMX *amx, const char *filename, void *memblock)
+int AMXAPI aux_LoadProgram(AMX *amx, char *filename, void *memblock)
 {
   FILE *fp;
   AMX_HEADER hdr;
@@ -89,7 +89,7 @@ int AMXAPI aux_FreeProgram(AMX *amx)
   if (amx->base!=NULL) {
     amx_Cleanup(amx);
     free(amx->base);
-    memset(amx, 0, sizeof(AMX));
+    memset(amx,0,sizeof(AMX));
   } /* if */
   return AMX_ERR_NONE;
 }
@@ -132,7 +132,7 @@ static char *messages[] = {
   return messages[errnum];
 }
 
-int AMXAPI aux_GetSection(const AMX *amx, int section, cell **start, size_t *size)
+int AMXAPI aux_GetSection(AMX *amx, int section, cell **start, size_t *size)
 {
   AMX_HEADER *hdr;
 

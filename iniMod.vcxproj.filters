@@ -14,7 +14,7 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
     <Filter Include="amx">
-      <UniqueIdentifier>{c7438fe1-e3f7-44c9-b697-c70545a0b649}</UniqueIdentifier>
+      <UniqueIdentifier>{4a350f97-6634-4bc7-83bb-6ab722b2dfb1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -39,35 +39,11 @@
     <ClCompile Include="gamemodes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="format.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="amx\amxtime.c">
-      <Filter>amx</Filter>
-    </ClCompile>
-    <ClCompile Include="amx\fixed.c">
-      <Filter>amx</Filter>
-    </ClCompile>
-    <ClCompile Include="amx\amxaux.c">
-      <Filter>amx</Filter>
-    </ClCompile>
-    <ClCompile Include="amx\amxcons.c">
-      <Filter>amx</Filter>
-    </ClCompile>
-    <ClCompile Include="amx\amxcore.c">
-      <Filter>amx</Filter>
-    </ClCompile>
-    <ClCompile Include="amx\amxstring.c">
-      <Filter>amx</Filter>
-    </ClCompile>
     <ClCompile Include="hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="con_commands.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="amx\amxfloat.c">
-      <Filter>amx</Filter>
     </ClCompile>
     <ClCompile Include="precache.cpp">
       <Filter>Source Files</Filter>
@@ -78,8 +54,44 @@
     <ClCompile Include="amxutils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="baseentity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gettime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="amx\amx.c">
       <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\amxcons.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\amxcore.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\amxfile.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\amxstring.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\amxtime.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\fixed.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\amxaux.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="Nightfire-iniMod\format.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="amx\float.c">
+      <Filter>amx</Filter>
+    </ClCompile>
+    <ClCompile Include="plugins.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -110,18 +122,6 @@
     <ClInclude Include="format.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="amx\osdefs.h">
-      <Filter>amx</Filter>
-    </ClInclude>
-    <ClInclude Include="amx\amx.h">
-      <Filter>amx</Filter>
-    </ClInclude>
-    <ClInclude Include="amx\amxaux.h">
-      <Filter>amx</Filter>
-    </ClInclude>
-    <ClInclude Include="amx\amxdbg.h">
-      <Filter>amx</Filter>
-    </ClInclude>
     <ClInclude Include="hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -137,10 +137,37 @@
     <ClInclude Include="amxutils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="baseentity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gettime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="amx\amx.h">
+      <Filter>amx</Filter>
+    </ClInclude>
+    <ClInclude Include="amx\osdefs.h">
+      <Filter>amx</Filter>
+    </ClInclude>
+    <ClInclude Include="amx\prefix.h">
+      <Filter>amx</Filter>
+    </ClInclude>
+    <ClInclude Include="amx\sclinux.h">
+      <Filter>amx</Filter>
+    </ClInclude>
+    <ClInclude Include="amx\amxaux.h">
+      <Filter>amx</Filter>
+    </ClInclude>
+    <ClInclude Include="plugins.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="amx\amxFixed.rc">
+    <None Include="amx\amxdefn.asm">
       <Filter>amx</Filter>
-    </ResourceCompile>
+    </None>
+    <None Include="amx\amxexecn.asm">
+      <Filter>amx</Filter>
+    </None>
   </ItemGroup>
 </Project>

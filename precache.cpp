@@ -56,33 +56,44 @@ void Precache::AddPrecacheToTable(int type, const char* actualprecache) {
 		delete utils;
 	}
 }
-void Precache::PreloadCached( void ) {
+void Precache::RemoveAllPrecacheFromTable( void ) { //There's actually no point in this since you can't load them when the map is running..
+	for (int i=0; i<TotalPrecached(); i++) {
+		RemovePrecacheFromTable(i);
+	}
+}
+void Precache::PreloadCached( bool remove ) {
 	engineModule *engine = new engineModule;
-	std::vector<_PrecacheInfo>::iterator it;
+	if(remove) RemoveAllPrecacheFromTable(); //Remove everything first
+	for (std::vector<_PrecacheInfo>::iterator it = precacheinf.begin(); it != precacheinf.end(); it++) {
+		if(IsItemOnPrecacheTable(it->precachename)) {
+			engine->Precache(it->precachetype, it->precachename);
+		}
+	}
+	delete engine;
+}
+int Precache::TotalPrecached() {
+	engineModule *engine = new engineModule;
 	int i = 0;
-	for (it = precacheinf.begin(); it != precacheinf.end(); it++) {
-		_PrecacheInfo precache = *(it);
-		precache = *(it);
-		if(IsItemOnPrecacheTable(precache.precachename)) {
-			engine->Precache(precache.precachetype, precache.precachename);
+	for (std::vector<_PrecacheInfo>::iterator it = precacheinf.begin(); it != precacheinf.end(); it++) {
+		if(IsItemOnPrecacheTable(it->precachename)) {
+			i++;
+		}
+	}
+	return i;
+	delete engine;
+}
+void Precache::RemovePrecacheFromTable( int precacheid ) {
+	int i = 0;
+	engineModule *engine = new engineModule;
+	for (std::vector<_PrecacheInfo>::iterator it = precacheinf.begin(); it != precacheinf.end(); it++) {
+		if(i == precacheid) {
+			printf("Precache::RemovePrecacheFromTable: Removed %s (%d) from table!\n", it->precachename, i);
+			precacheinf.erase(it);
+			break;
 		}
 		i++;
 	}
 	delete engine;
-	return;
-}
-void Precache::RemovePrecacheFromTable( int precacheid ) {
-	std::vector<_PrecacheInfo>::iterator it;
-	int i = 0;
-	for (it = precacheinf.begin(); it != precacheinf.end(); it++) {
-		_PrecacheInfo precache = *(it);
-		precache = *(it);
-		if(i++ == precacheid) {
-			precacheinf.clear();
-			//precacheinf.erase(it);
-			return;
-		}
-	}
 }
 int find_precachetype(const char *name) {
 	for(int i=0;i<sizeof(precachinginfo)/sizeof(PrecacheSpecs);i++) {

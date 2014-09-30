@@ -32,7 +32,12 @@ public:
 
 typedef void (*RCONCmdProc)(const char *params);
 //Commands
+void rconcmd_players(const char *params);
+void rconcmd_availablecommands(const char *params);
 void rconcmd_emitambsound(const char *params);
 void rconcmd_emitambsoundshort(const char *params);
 void rconcmd_precache(const char *params);
+void rconcmd_loadplugin(const char *params);
+void rconcmd_unloadplugin(const char *params);
+void rconcmd_unloadallplugins(const char *params);
 #endif

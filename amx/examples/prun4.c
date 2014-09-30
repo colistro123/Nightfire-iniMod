@@ -1,6 +1,6 @@
 /*  Command-line shell for the "Pawn" Abstract Machine.
  *
- *  Copyright (c) ITB CompuPhase, 2001-2010
+ *  Copyright (c) ITB CompuPhase, 2001-2008
  *
  *  This file may be freely used. No warranties of any kind.
  */
@@ -8,14 +8,43 @@
 #include <stdlib.h>     /* for exit() */
 #include <string.h>     /* for memset() (on some compilers) */
 #include "amx.h"
-#include "amxaux.c"
 
-
-void ErrorExit(AMX *amx, int errorcode)
+size_t aux_ProgramSize(char *filename)
 {
-  printf("Run time error %d: \"%s\" on address %ld\n",
-         errorcode, aux_StrError(errorcode),
-         (amx != NULL) ? amx->cip : 0);
+  FILE *fp;
+  AMX_HEADER hdr;
+
+  if ((fp=fopen(filename,"rb")) == NULL)
+    return 0;
+  fread(&hdr, sizeof hdr, 1, fp);
+  fclose(fp);
+
+  amx_Align16(&hdr.magic);
+  amx_Align32((unsigned long*)&hdr.stp);
+  return (hdr.magic==AMX_MAGIC) ? (size_t)hdr.stp : 0;
+}
+
+int aux_LoadProgram(AMX *amx, char *filename, void *memblock)
+{
+  FILE *fp;
+  AMX_HEADER hdr;
+
+  if ((fp = fopen(filename, "rb")) == NULL )
+    return AMX_ERR_NOTFOUND;
+  fread(&hdr, sizeof hdr, 1, fp);
+  amx_Align32((unsigned long *)&hdr.size);
+  rewind(fp);
+  fread(memblock, 1, (size_t)hdr.size, fp);
+  fclose(fp);
+
+  memset(amx, 0, sizeof *amx);
+  return amx_Init(amx, memblock);
+}
+
+static void ErrorExit(char *message, int errorcode)
+{
+  printf(message, errorcode);
+  printf("\n");
   exit(1);
 }
 
@@ -25,18 +54,18 @@ void PrintUsage(char *program)
   exit(1);
 }
 
-int main(int argc, char *argv[])
+int main(int argc,char *argv[])
 {
-  extern int AMXAPI amx_ConsoleInit(AMX *amx);
-  extern int AMXAPI amx_ConsoleCleanup(AMX *amx);
-  extern int AMXAPI amx_CoreInit(AMX *amx);
-  extern int AMXAPI amx_CoreCleanup(AMX *amx);
+  extern int amx_ConsoleInit(AMX *amx);
+  extern int amx_ConsoleCleanup(AMX *amx);
+  extern int amx_CoreInit(AMX *amx);
+  extern int amx_CoredCleanp(AMX *amx);
 
   size_t memsize;
   void *program;
   AMX amx;
   int index, err;
-  cell *address;
+  cell amx_addr, *phys_addr;
   char output[128];
 
   if (argc != 4)
@@ -52,8 +81,8 @@ int main(int argc, char *argv[])
   if (err)
     ErrorExit(&amx, err);
 
-  amx_ConsoleInit(&amx);
-  err = amx_CoreInit(&amx);
+  amx_ConsoleInit(amx);
+  err = amx_CoreInit(amx);
   if (err)
     ErrorExit(&amx, err);
 
@@ -61,16 +90,17 @@ int main(int argc, char *argv[])
   if (err)
     ErrorExit(&amx, err);
 
-  err = amx_PushString(&amx, &address, argv[3], 0, 0);
+  err = amx_Allot(&amx, strlen(argv[3]) + 1, &amx_addr, &phys_addr);
+  if (err)
+    ErrorExit(&amx, err);
+  amx_SetString(phys_addr, argv[3], 0);
+
+  err = amx_Exec(&amx, NULL, index, 1, amx_addr);
   if (err)
     ErrorExit(&amx, err);
 
-  err = amx_Exec(&amx, NULL, index);
-  if (err)
-    ErrorExit(&amx, err);
-
-  amx_GetString(output, address, 0, sizeof output);
-  amx_Release(&amx, address);
+  amx_GetString(output, phys_addr);
+  amx_Release(&amx, amx_addr);
   printf("%s returns %s\n", argv[1], output);
 
   amx_ConsoleCleanup(&amx);

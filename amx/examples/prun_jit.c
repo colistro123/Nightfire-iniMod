@@ -118,7 +118,7 @@ int AMXAPI aux_LoadProgram(AMX *amx, const char *filename)
    * relocation table
    */
   error = AMX_ERR_MEMORY;       /* assume "insufficient memory" */
-  ncode = malloc(amx->codesize);/* amx->code_size is an estimate */
+  ncode = malloc(amx->code_size);/* amx->code_size is an estimate */
   if (ncode == NULL)
     goto fail;
   if (amx->reloc_size > 0) {
@@ -136,9 +136,9 @@ int AMXAPI aux_LoadProgram(AMX *amx, const char *filename)
    * addresses for jumps into the runtime, which is fixed in memory.
    */
   error = AMX_ERR_MEMORY;       /* assume "insufficient memory" */
-  if ((amx->base = vmalloc_exec(amx->codesize)) == NULL)
+  if ((amx->base = vmalloc_exec(amx->code_size)) == NULL)
     goto fail;
-  memcpy(amx->base, ncode, amx->codesize);
+  memcpy(amx->base, ncode, amx->code_size);
   free(pcode);
   free(rt);
   free(ncode);

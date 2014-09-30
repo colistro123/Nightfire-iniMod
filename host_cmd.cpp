@@ -6,6 +6,7 @@
 #include "gamemodes.h"
 #include <iostream>     // std::cout
 #include <algorithm>    // std::count
+#include "plugins.h"
 
 typedef struct {
 	char name;
@@ -33,10 +34,13 @@ void HostCMD::OnPreClientCommandText(int nfuserid, const char* recvcmd) {
 	if(find_cmdParam(recvcmd)) {
 		CBasePlayer *pPlayer = new CBasePlayer;
 		CNetwork *gGameMode = new CNetwork;
+		CPlugins *plugin = new CPlugins;
 		int clientid = pPlayer->GetInternalIDFromNFID(nfuserid);
 		gGameMode->OnClientCommandText(clientid, recvcmd);
+		plugin->OnClientCommandText(clientid, recvcmd);
 		delete pPlayer;
 		delete gGameMode;
+		delete plugin;
 	}
 	delete engine;
 	delete utils;

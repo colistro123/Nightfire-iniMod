@@ -18,13 +18,28 @@
 #include "amxutils.h"
 //#include "amx/amxaux.h"
 
-#define PLAYER_TABLE_CELLSIZE	20248
-#define MAX_PLAYERS 32
+//Disconnect Reasons
+#define REASON_DISCONNECT		1
+#define REASON_TIMEOUT			2
+#define REASON_MAPCHANGE		3
 
-#define NEXT_BEAT 1
-#define LAST_BEAT 2
-#define REMOVE_FROM_TABLE	1
-#define ADD_TO_TABLE		2
+//Other player vars
+#define PLAYER_TABLE_CELLSIZE	20248
+#define MAX_PLAYERS				32
+#define CLIENT_SCAN_TIME		5000.0f //We update the clients every 5 seconds
+#define NEXT_BEAT				1
+#define LAST_BEAT				2
+#define REMOVE_FROM_TABLE		1
+#define ADD_TO_TABLE			2
+#define ADD_TO_QUEUE			3	//Puts the client on queue if there's a map change (Removed)
+
+//Client states
+#define STATE_CONNECTED			1	
+#define STATE_QUEUE				2
+#define STATE_INVALID			3
+
+#define INVALID_USERID			-1
+
 using namespace std;
 
 //Player table definition
@@ -40,7 +55,7 @@ typedef struct _PlayerInfo {
 	UINT8 pfakeclient;
 	UINT8 pedicts;// Table - open with memOpen
 	string pname;
-	UINT8 puserid;
+	int puserid;
 	string puserinfo;
 	int pconnecttime;
 	UINT8 plagcompensation;
@@ -49,6 +64,7 @@ public:
 	int pnext_heartbeat;
 	int plast_heartbeat;
 	int pinternaluserid;
+	int pclientstate;
 } PlayerInfo;
 
 //int std::vector<PlayerInfo> players;
@@ -98,8 +114,11 @@ public:
 	int GetPlayerDeaths( int playerid );
 	float GetPlayerKills( int playerid );
 	int HasClientSpawned( int playerid );
-	void setPointerForPlayerID( int playerid ); //Just a little function I made to save lines when setting pointers..
+	int GetEdictNum(int clientptr);
+	int getPointerForPlayerID( int playerid ); //Just a little function I made to save lines when getting pointers..
 	int OnClientSpawn( int playerid );
+	int OnClientEquip(int playerid);
+	void ProcessClientsOnMapLoad( void );
 	int IsClientConnected( int playerid );
 	int IsAClient( int playerid );
 	void AddPlayerToTable(int playerid );
@@ -112,7 +131,7 @@ public:
 	virtual int MaxClients() { return (UINT32)ReadInt32(SV_MAXCLIENTS); } //These are the max clients on the server
 	virtual int NumClients() { return (UINT32)ReadInt32(SV_NUMCLIENTS); } //These are the clients on the server
 	string FetchInfoForPlayerID( int playerid );
-	void ClientCommand(char *text);
+	void ClientCommand(char *text, int edictptr);
 	int GetConnectTime(int playerid);
 	void UpdateHeartBeat( int playerid );
 	int GetBeat( int playerid, int type ); //1 for next, 2 for last
@@ -129,13 +148,22 @@ public:
 	void Weapon_SetLast(int playerid, char *wepname); //Set their last weapon
 	void SetPlayerModel(int playerid, char *mdlname);
 	void SpectatePlayer(int playerid, int tospectate);
-	char* GetClientName(int playerid);
+	string GetClientName(int playerid);
 	float GetPlayerPos(int playerid, float &X, float &Y, float &Z);
 	void SetPlayerPos(int playerid, float X, float Y, float Z);
+	void SetPlayerTeam(int playerid, int team);
+	int GetPlayerUserID( int edictptr );
+	void OnPlayerHudInit( int playerid );
+	int GetClientPtr(int edictptr);
+	string GetUserInfoStringValue(const char *key, int edictptr);
+	void CheckTimeOut(int playerid);
+	int DisconnectClient(int playerid, const char* szReason = "");
+	int GetFlags(int playerid); //This is supposed to get a player's flags
+	bool IsValidPlayerID(int playerid) { return playerid == INVALID_USERID ? false : true; }
 	//definitions
-	static int cptr;
+	//static int cptr;
 	static int edictptr;
-	static int ptr;
+	//static int ptr;
 	static double curtime;
 	static double lasttick;
 	static int currentclient;
@@ -218,34 +246,33 @@ static cell AMX_NATIVE_CALL n_RemoveAllItems(AMX *amx, const cell *params) {
 static cell AMX_NATIVE_CALL n_GiveNamedItem(AMX *amx, const cell *params) {
 	CBasePlayer *pPlayer = new CBasePlayer;
 	char *wepname = NULL;
-    amx_StrParam_Type(amx, params[2], wepname, char*);
+    amx_StrParam(amx, params[2], wepname);
     pPlayer->GiveNamedItem( (int)params[1], wepname, (int)params[3] );
 	delete pPlayer;
 	return true;
 }
 static cell AMX_NATIVE_CALL n_GetClientName(AMX *amx, const cell *params) {
 	CBasePlayer *pPlayer = new CBasePlayer;
-	amx_SetString((cell*)params[2], (const char*)pPlayer->GetClientName( (int)params[1] ), true, false, params[3]);
+	cell* addr = NULL;
+
+    //Get the address of our string parameter (str) and store our message 
+    amx_GetAddr(amx, params[2], &addr);
+    amx_SetString(addr, pPlayer->GetClientName( (int)params[1] ).c_str(), true, false, params[3]);
 	delete pPlayer;
 	return true;
 }
-static cell AMX_NATIVE_CALL n_GetPlayerPos(AMX *amx, const cell *params) { //Crashes everything, thanks AMX
+static cell AMX_NATIVE_CALL n_GetPlayerPos(AMX *amx, const cell *params) {
 	//This function passes XYZ by reference
 	CBasePlayer *pPlayer = new CBasePlayer;
 	float X, Y, Z;
 	pPlayer->GetPlayerPos((int)params[1], X, Y, Z);
-	cell* addr[3] = {NULL, NULL, NULL};
-	int eCode;
+	cell* dest[3] = {NULL, NULL, NULL};
 	for(int i=0; i<3; i++) {
-		eCode = amx_GetAddr(amx, params[i+2], &addr[i]) == AMX_ERR_MEMACCESS ? printf("Error while checking &addr[%d]: (%x)\n", i, &addr[i]) : 0;
+		amx_GetAddr(amx, params[i+2], &dest[i]);
 	}
-	if (eCode) {
-		printf("Last error code at n_GetPlayerPos was %d\n", eCode);
-		return false;
-	}
-	*addr[0] = amx_ftoc(X);
-	*addr[1] = amx_ftoc(Y);
-	*addr[2] = amx_ftoc(Z);
+	*dest[0] = amx_ftoc(X);
+	*dest[1] = amx_ftoc(Y);
+	*dest[2] = amx_ftoc(Z);
 	delete pPlayer;
 	return true;
 }
@@ -254,5 +281,19 @@ static cell AMX_NATIVE_CALL n_SetPlayerPos(AMX *amx, const cell *params) {
 	pPlayer->SetPlayerPos((int)params[1], amx_ctof(params[2]), amx_ctof(params[3]), amx_ctof(params[4]));
 	delete pPlayer;
 	return true;
+}
+static cell AMX_NATIVE_CALL n_KickClient(AMX *amx, const cell *params) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	char *ret = NULL;
+    amx_StrParam(amx, params[2], ret);
+	pPlayer->DisconnectClient((int)params[1], ret);
+	delete pPlayer;
+	return true;
+}
+static cell AMX_NATIVE_CALL n_GetPlayerEdictPtr(AMX *amx, const cell *params) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	int edictptr = pPlayer->GetEdictNum(params[1]);
+	delete pPlayer;
+	return edictptr;
 }
 #endif

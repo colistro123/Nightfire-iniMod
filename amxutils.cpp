@@ -1,5 +1,5 @@
-//Taken from AMXMODX
 #include "amxutils.h"
+#include "gamemodes.h"
 
 cell* get_amxaddr(AMX *amx,cell amx_addr)
 {

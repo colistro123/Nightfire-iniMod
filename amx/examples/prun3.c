@@ -1,6 +1,6 @@
 /*  Command-line shell for the "Pawn" Abstract Machine.
  *
- *  Copyright (c) ITB CompuPhase, 2001-2010
+ *  Copyright (c) ITB CompuPhase, 2001-2008
  *
  *  This file may be freely used. No warranties of any kind.
  */
@@ -16,20 +16,27 @@
 #define CONSOLE
 /*#define FIXEDPOINT*/
 
-void AMXAPI amx_CoreInit(AMX *amx);  /* two functions from AMX_CORE.C */
-void AMXAPI amx_CoreCleanup(AMX *amx);
+void core_Init(void);   /* two functions from AMX_CORE.C */
+void core_Exit(void);
 
 static int abortflagged = 0;
 void sigabort(int sig)
 {
-  abortflagged = 1;
-  signal(sig, sigabort);    /* re-install the signal handler */
+  abortflagged=1;
+  signal(sig,sigabort); /* re-install the signal handler */
 }
 
-int AMXAPI aux_Monitor(AMX *amx)
+int AMXAPI aux_AbortProc(AMX *amx)
 {
-  /* check whether an "abort" was requested */
-  return abortflagged ? AMX_ERR_EXIT : AMX_ERR_NONE;
+  switch (amx->dbgcode) {
+  case DBG_INIT:
+    return AMX_ERR_NONE;
+  case DBG_LINE:
+    /* check whether an "abort" was requested */
+    return abortflagged ? AMX_ERR_EXIT : AMX_ERR_NONE;
+  default:
+    return AMX_ERR_DEBUG;
+  } /* switch */
 }
 
 size_t aux_ProgramSize(char *filename)
@@ -41,7 +48,7 @@ size_t aux_ProgramSize(char *filename)
     return 0;
   fread(&hdr, sizeof hdr, 1, fp);
   fclose(fp);
-  amx_Align32((uint32_t*)&hdr.stp);
+  amx_Align32((unsigned long *)&hdr.stp);
   return hdr.stp;
 }
 
@@ -53,13 +60,13 @@ int aux_LoadProgram(AMX *amx, char *filename, void *memblock)
   if ((fp = fopen(filename, "rb")) == NULL )
     return AMX_ERR_NOTFOUND;
   fread(&hdr, sizeof hdr, 1, fp);
-  amx_Align32((uint32_t*)&hdr.size);
+  amx_Align32((unsigned long *)&hdr.size);
   rewind(fp);
   fread(memblock, 1, (size_t)hdr.size, fp);
   fclose(fp);
 
   memset(amx, 0, sizeof *amx);
-  amx_SetDebugHook(amx, aux_Monitor);
+  amx_SetDebugHook(amx, aux_AbortProc);
   return amx_Init(amx, memblock);
 }
 
@@ -91,7 +98,7 @@ DWORD aux_CommitMemory(struct _EXCEPTION_POINTERS *ep, void *memaddr, size_t mem
   return EXCEPTION_CONTINUE_EXECUTION;
 }
 
-int aux_RegisterNatives(AMX *amx)
+static int aux_RegisterNatives(AMX *amx)
 {
   #if defined CONSOLE
     extern AMX_NATIVE_INFO console_Natives[];
@@ -122,14 +129,14 @@ int aux_RegisterNatives(AMX *amx)
   return amx_Register(amx, core_Natives, -1);
 }
 
-void ErrorExit(char *message, int errorcode)
+static void ErrorExit(char *message, int errorcode)
 {
   printf(message, errorcode);
   printf("\n");
   exit(1);
 }
 
-int main(int argc, char *argv[])
+int main(int argc,char *argv[])
 {
   size_t memsize;
   void *program;
@@ -138,7 +145,7 @@ int main(int argc, char *argv[])
   int err;
 
   if (argc != 2 || (memsize = aux_ProgramSize(argv[1])) == 0)
-    ErrorExit("Usage: PRUN3 <filename>\n\n"
+    ErrorExit("Usage: SRUN <filename>\n\n"
               "The filename must include the extension", 0);
 
   program = VirtualAlloc(NULL, memsize, MEM_RESERVE, PAGE_READWRITE);
@@ -146,24 +153,23 @@ int main(int argc, char *argv[])
     ErrorExit("Failed to reserve memory", 0);
 
   __try {
-
     err = aux_LoadProgram(&amx, argv[1], program);
     if (err != AMX_ERR_NONE)
       ErrorExit("Load error %d (invalid file format or version mismatch)", err);
 
     signal(SIGINT,sigabort);
-    amx_CoreInit(&amx);
+    core_Init();
 
     err = aux_RegisterNatives(&amx);
     if (err != AMX_ERR_NONE)
-      ErrorExit("The program uses native functions that this run-time does not provide", 0);
+      ErrorExit("The program uses native functions that this run-time does not provide");
 
-    err = amx_Exec(&amx, &ret, AMX_EXEC_MAIN);
+    err = amx_Exec(&amx, &ret, AMX_EXEC_MAIN, 0);
     while (err == AMX_ERR_SLEEP)
-      err = amx_Exec(&amx, &ret, AMX_EXEC_CONT);
+      err = amx_Exec(&amx, &ret, AMX_EXEC_CONT, 0);
 
     if (err != AMX_ERR_NONE)
-      printf("Run time error %d on address %ld\n", err, amx.cip);
+      printf("Run time error %d on line %ld\n", err, amx.curline);
     else if (ret != 0)
       printf("%s returns %ld\n", argv[1], (long)ret);
 
@@ -179,6 +185,6 @@ int main(int argc, char *argv[])
   VirtualFree(program, memsize, MEM_DECOMMIT);
   VirtualFree(program, 0, MEM_RELEASE);
 
-  amx_CoreCleanup(&amx);
+  core_Exit();
   return 0;
 }

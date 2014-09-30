@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "addresses.h"
+#include "gettime.h"
 
 string Utils::ExplodeAndReturn(string stringToExplode, int field, string delimiter) {
 	Utils expPointer;
@@ -31,4 +32,7 @@ vector<string> Utils::explode( const string &delimiter, const string &str) {
     }
     arr.push_back(  str.substr(k, i-k) );
     return arr;
+}
+float Utils::GetPointDistance(float px, float py, float pz, float X, float Y, float Z) {
+	return sqrt( ((px-X)*(px-X))+((py-Y)*(py-Y))+((pz-Z)*(pz-Z)) );
 }

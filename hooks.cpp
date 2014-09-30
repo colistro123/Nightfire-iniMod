@@ -4,12 +4,27 @@
 #include "host_cmd.h"
 #include "gamemodes.h"
 #include "player.h"
+#include "engine.h"
+#include "gameinterface.h"
+#include "utils.h"
+#include "plugins.h"
 
 //Global variables 
 BYTE *retJMP;
 DWORD myData = 0;
+Vector storeFloats();
+float tempFloat[3];
+float tempFloat1 = 0;
+float tempFloat2 = 0;
+float tempFloat3 = 0;
+float tempFloat4 = 0;
+float tempFloat5 = 0;
+float tempFloat6 = 0;
 DWORD tempRegister = 0;
 DWORD tempRegister2 = 0;
+DWORD tempRegister3 = 0;
+DWORD tempRegister4 = 0;
+DWORD tempRegister5 = 0;
 DWORD tempEAX;
 DWORD tempEBX;
 DWORD tempECX;
@@ -32,11 +47,19 @@ HookCallInfo funcHooks[] = {
 	{(BYTE*)ADR_INVALID_CMD, (DWORD)OnCommandProcess, 6, (BYTE*)ADR_INVALID_CMD+0x5}, //patch address, return function (our code), length, return jump address
 	{(BYTE*)ADR_CHANGEMAP_FN, (DWORD)hookOnServerChangeMap, 6, (BYTE*)ADR_CHANGEMAP_FN+0x5},
 	{(BYTE*)ADR_CONNECT_FN, (DWORD)hookOnClientConnect, 6, (BYTE*)ADR_CONNECT_FN+0x5},
-	{(BYTE*)ADR_DISCONNECT_FN, (DWORD)hookOnClientDisconnect, 6, (BYTE*)ADR_DISCONNECT_FN+0x5},
+	{(BYTE*)ADR_DROPCLIENT_HOOK, (DWORD)hookOnClientDisconnect, 6, (BYTE*)ADR_DROPCLIENT_HOOK+0x5}, //Deprecated, now uses ADR_DROPCLIENT_FN
 	{(BYTE*)ADR_TRIGGER_EVT, (DWORD)OnTriggerEvent, 6, (BYTE*)ADR_TRIGGER_EVT+0x5},
 	{(BYTE*)ADR_ADDBOT_FN, (DWORD)hookOnBotConnect, 6, (BYTE*)ADR_ADDBOT_FN+0x5},
 	{(BYTE*)ADR_HOSTSAY, (DWORD)hookOnHostSay, 6, (BYTE*)ADR_HOSTSAY+0x5},
-	{(BYTE*)ADR_PLAYERKILLED_FN, (DWORD)hookOnPlayerKilled, 6, (BYTE*)ADR_PLAYERKILLED_FN+0x5}
+	{(BYTE*)ADR_PLAYERKILLED_FN, (DWORD)hookOnPlayerKilled, 6, (BYTE*)ADR_PLAYERKILLED_FN+0x5},
+	{(BYTE*)ADR_PLAYERSPAWN, (DWORD)hookOnPlayerSpawn, 6, (BYTE*)ADR_PLAYERSPAWN+0x5},
+	{(BYTE*)ADR_PLAYEREQUIP, (DWORD)hookOnPlayerEquip, 6, (BYTE*)ADR_PLAYEREQUIP+0x5},
+	{(BYTE*)ADR_MAPLOADED, (DWORD)hookOnMapLoaded, 6, (BYTE*)ADR_MAPLOADED+0x5},
+	{(BYTE*)ADR_TIMEOUT_HOOK, (DWORD)hookOnClientTimeOut, 6, (BYTE*)ADR_TIMEOUT_HOOK+0x5},
+	{(BYTE*)ADR_FIRE_BULLETS, (DWORD)hookOnFireBullets, 6, (BYTE*)ADR_FIRE_BULLETS+0x5},
+	{(BYTE*)ADR_INIT_HUD, (DWORD)hookOnHudInit, 6, (BYTE*)ADR_INIT_HUD+0x5},
+	{(BYTE*)ADR_FAKECLIENTMAPCHANGE, (DWORD)hookOnDropFakeClient, 6, (BYTE*)ADR_FAKECLIENTMAPCHANGE+0x5}, //This gets called when a fake client gets kicked
+	{(BYTE*)ADR_RECONNECT_FN, (DWORD)hookOnClientReconnect, 8, (BYTE*)ADR_RECONNECT_FN+0x5}
 	//{(BYTE*)ADR_PLAYERSUICIDED_FN, (DWORD)hookOnPlayerSuicided, 6, (BYTE*)ADR_PLAYERSUICIDED_FN+0x5}
 };
 
@@ -49,7 +72,7 @@ void applyPatches( void ) {
 	for(int i=0;i<sizeof(funcHooks)/sizeof(HookCallInfo);i++) {
 		PlaceJMP((BYTE*)funcHooks[i].address, funcHooks[i].retFunc, funcHooks[i].len);
 	}
-	printf("iniMod: Done hooking game engine and applying memory patches!\n");
+	printf("iniMod: Done hooking game engine and applying memory patches.\n");
 }
 
 void PlaceJMP( BYTE *bt_DetourAddress, DWORD dw_FunctionAddress, DWORD dw_Size)
@@ -118,6 +141,40 @@ __declspec(naked) void hookOnServerChangeMap() {
 	//}
 }
 
+__declspec(naked) void hookOnHudInit() {
+	__asm {
+		mov tempEAX, eax
+		mov tempEBX, ebx
+		mov tempECX, ecx
+		mov tempEDX, edx
+		mov tempEDI, edi
+		mov tempESI, esi
+		mov edi, dword ptr ds:[edi + 0x4]   //EDICT_NUM
+		mov edi, dword ptr ds:[edi + 0x204] //EDICT_NUM
+		mov tempRegister, edi
+	}
+	callOnHudInit(tempRegister);
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnHudInit);
+	 __asm {
+		mov eax, tempEAX
+		mov ebx, tempEBX
+		mov ecx, tempECX
+		mov edx, tempEDX
+		mov edi, tempEDI
+		mov esi, tempESI
+
+		MOV ECX,DWORD PTR DS:[0x4217CA9C]
+		jmp retJMP //jump to original code
+	 }
+}
+__declspec(naked) void hookOnMapLoaded() {
+	__asm mov dword ptr ds:[tempEAX], eax //STORE original value of registers in a really bad way since PUSH wasn't working properly
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnMapLoaded);
+	callOnMapLoaded();
+	__asm mov ecx, dword ptr ds:[0x44a86b50]
+	__asm mov eax, tempEAX  //restore the original registers in a bad way
+	__asm jmp retJMP
+}
 __declspec(naked) void hookOnClientConnect() {
 		__asm add esp,0x0A4C //restore original value since we intercepted
 		__asm push edx //store the old value of edx
@@ -129,6 +186,35 @@ __declspec(naked) void hookOnClientConnect() {
 		eaxis0:
 		__asm pop edx //restore old value of edx
 		__asm retn
+}
+__declspec(naked) void hookOnClientReconnect() { //client already has a slot, reconnect him using the same one
+		__asm {
+			mov tempEAX, eax
+			mov tempEBX, ebx
+			mov tempECX, ecx
+			mov tempEDX, edx
+			mov tempEDI, edi
+			mov tempESI, esi
+			mov tempEBP, ebp
+			mov tempRegister, ebp
+		}
+			tempRegister2 = ReadInt32(tempRegister + client_t::pedicts);
+			callOnClientReconnect(tempRegister2);
+			retJMP = getHookFuncJMPAddr((DWORD)hookOnClientReconnect);
+		__asm {
+			mov eax, tempEAX
+			mov ebx, tempEBX
+			mov ecx, tempECX
+			mov edx, tempEDX
+			mov edi, tempEDI
+			mov esi, tempESI
+			mov ebp, tempEBP
+
+			//restore original
+			sub esp,0x14
+			mov ecx,0x5
+			jmp retJMP
+		}
 }
 __declspec(naked) void hookOnBotConnect() {
 		tempRegister = NUM_FOR_EDICT;
@@ -160,22 +246,146 @@ invalid:
 		}
 }
 
-__declspec(naked) void hookOnClientDisconnect() {
-	__asm mov dword ptr ds:[tempRegister], eax
-	__asm mov dword ptr ds:[tempEAX], eax //STORE original value of registers in a really bad way since PUSH wasn't working properly
-	__asm mov dword ptr ds:[tempECX], ecx
-	__asm mov dword ptr ds:[tempEDX], edx
+__declspec(naked) void hookOnClientDisconnect() { //I already changed the addresses for you
+	__asm{
+		mov tempRegister, esi
+		mov tempEAX, eax
+		mov tempEBX, ebx
+		mov tempECX, ecx
+		mov tempEDX, edx
+		mov tempEDI, edi
+		mov tempESI, esi
+	}
 	retJMP = getHookFuncJMPAddr((DWORD)hookOnClientDisconnect);
 	callOnClientDisconnect(tempRegister);
-	__asm mov eax, tempEAX  //restore the original registers in a bad way
-	__asm mov ecx, tempECX
-	__asm mov edx, tempEDX
+	__asm{
+		mov eax, tempEAX
+		mov ebx, tempEBX
+		mov ecx, tempECX
+		mov edx, tempEDX
+		mov edi, tempEDI
+		mov esi, tempESI
 
-	__asm push eax //restore intercepted code
-	__asm mov eax, dword ptr ds:[0x4217A168] //restore intercepted code
-	__asm jmp retJMP //jump to original code
+		MOV EAX,DWORD PTR DS:[ESI+0x4B78] //restore old
+		jmp retJMP //jump to original code
+	}
 }
+__declspec(naked) void hookOnClientTimeOut() {
+	//New style
+	__asm {
+		mov tempRegister, esi //STORE original value of registers in a really bad way since PUSH wasn't working properly
+		mov tempEAX, eax
+		mov tempEBX, ebx
+		mov tempECX, ecx
+		mov tempEDX, edx
+		mov tempEDI, edi
+		mov tempESI, esi
+		mov esi, dword ptr ds:[esi+19320] //client_t::pedicts
+		mov tempRegister, esi
+	}
 
+	callOnClientTimeOut(tempRegister);
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnClientTimeOut);
+
+	__asm {
+		mov eax, tempEAX
+		mov ebx, tempEBX
+		mov ecx, tempECX
+		mov edx, tempEDX
+		mov edi, tempEDI
+		mov esi, tempESI
+
+		push eax //overwritten
+		push 0x430F0C7C //overwritten
+		jmp retJMP //jump to original code
+	}
+}
+__declspec(naked) void hookOnFireBullets() {
+	//New style
+	__asm {
+		mov tempEAX, eax
+		mov tempEBX, ebx
+		mov tempECX, ecx
+		mov tempEDX, edx
+		mov tempEDI, edi
+		mov tempESI, esi
+		mov tempEBP, ebp
+		mov ebx, dword ptr ds:[ecx+0x4] //entity?
+		mov ebx, dword ptr ds:[ebx+0x204] //client_t::pedicts
+		mov tempRegister, ebx //edictptr of player
+		//mov eax, dword ptr ds:[esp+0xc] //arg3
+		//mov ebx, dword ptr ds:[esp+0x10] //arg4
+		//mov ecx, dword ptr ds:[esp+0x14] //arg5
+		fld dword ptr ds:[esp+0xc]
+		fstp dword ptr ds :[tempFloat1]
+		fld dword ptr ds:[esp+0x10]
+		fstp dword ptr ds:[tempFloat2]
+		fld dword ptr ds:[esp+0x14]
+		fstp dword ptr ds:[tempFloat3]
+		//Screen Vectors & Distance
+		fld dword ptr ds:[esp+0x18]
+		fstp dword ptr ds :[tempFloat4]
+		fld dword ptr ds:[esp+0x1c]
+		fstp dword ptr ds:[tempFloat5]
+		fld dword ptr ds:[esp+0x20]
+		fstp dword ptr ds:[tempFloat6]
+		//mov tempRegister2, eax
+		//mov tempRegister3, ebx
+		//mov tempRegister4, ecx
+	}
+	callOnFireBullets(tempRegister, Vector(tempFloat1, tempFloat2, tempFloat3), Vector(tempFloat4, tempFloat6, 0), tempFloat5);
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnFireBullets);
+
+	__asm {
+		mov eax, tempEAX
+		mov ebx, tempEBX
+		mov ecx, tempECX
+		mov edx, tempEDX
+		mov edi, tempEDI
+		mov esi, tempESI
+		mov ebp, tempEBP
+		
+		//4217A168
+		sub esp, 0x11c
+		//mov eax, dword ptr ds:[0x4217a168]
+		jmp retJMP //jump to original code
+	}
+}
+__declspec(naked) void hookOnDropFakeClient() {
+	//New style
+	__asm {
+		mov tempEAX, eax
+		mov tempEBX, ebx
+		mov tempECX, ecx
+		mov tempEDX, edx
+		mov tempEDI, edi
+		mov tempESI, esi
+		mov tempEBP, ebp
+
+		mov tempRegister, esi
+	}
+
+	callOnDropFakeClient(tempRegister);
+	//retJMP = getHookFuncJMPAddr((DWORD)hookOnFireBullets);
+
+	__asm {
+		mov eax, tempEAX
+		mov ebx, tempEBX
+		mov ecx, tempECX
+		mov edx, tempEDX
+		mov edi, tempEDI
+		mov esi, tempESI
+		mov ebp, tempEBP
+		
+		pop ebp
+		pop edi
+		pop esi
+		pop ebx
+		retn
+
+		//jmp retJMP //jump to original code
+	}
+}
 __declspec(naked) void hookOnHostSay() {
 	tempRegister = NUM_FOR_EDICT;
 	__asm mov dword ptr ds:[tempECX],ecx
@@ -297,6 +507,82 @@ __declspec(naked) void hookOnPlayerSuicided() { //TO FIX, INSTA CRASH, DOESN'T W
 	__asm add esp, 4
 	__asm jmp retJMP
 }
+__declspec(naked) void hookOnPlayerSpawn() {
+	tempRegister = NUM_FOR_EDICT;
+	__asm mov dword ptr ds:[tempECX], ecx
+	__asm mov dword ptr ds:[tempEAX], eax
+	__asm mov dword ptr ds:[tempESI], esi
+	__asm mov dword ptr ds:[tempEDX], edx
+	//For ESI
+	__asm mov esi, dword ptr ds:[esi+4]
+	__asm push esi //edictptr
+	__asm call tempRegister //get number for this edict
+	__asm test eax, eax
+	__asm je invalid //jump if it's a bad pointer
+			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
+			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
+			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
+			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
+	invalid:
+
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnPlayerSpawn);
+	callOnClientSpawn(tempRegister2);
+	__asm add esp, 4
+
+	__asm mov ecx, dword ptr ds:[tempECX]
+	__asm mov eax, dword ptr ds:[tempEAX]
+	__asm mov esi, dword ptr ds:[tempESI]
+	__asm mov edx, dword ptr ds:[tempEDX]
+
+	//The code we replaced
+	__asm pop edi
+	__asm test eax, eax
+	__asm mov eax, dword ptr ds:[esi+4]
+	
+	__asm jmp retJMP
+}
+__declspec(naked) void hookOnPlayerEquip() {
+	tempRegister = NUM_FOR_EDICT;
+	__asm mov dword ptr ds:[tempECX], ecx
+	__asm mov dword ptr ds:[tempEAX], eax
+	__asm mov dword ptr ds:[tempEDI], edi
+	__asm mov dword ptr ds:[tempEDX], edx
+	__asm mov dword ptr ds:[tempEBX], ebx
+	__asm mov dword ptr ds:[tempESI], esi
+	//For EAX
+	//__asm mov edx, dword ptr ds:[esi+4]
+	__asm push eax //edictptr
+	__asm call tempRegister //get number for this edict
+	__asm test eax, eax
+	__asm je invalid //jump if it's a bad pointer
+			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
+			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
+			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
+			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
+	invalid:
+
+	//retJMP = getHookFuncJMPAddr((DWORD)hookOnPlayerEquip);
+	callOnClientEquip(tempRegister2);
+	__asm add esp, 4
+
+	__asm mov ecx, dword ptr ds:[tempECX]
+	__asm mov eax, dword ptr ds:[tempEAX]
+	__asm mov edi, dword ptr ds:[tempEDI]
+	__asm mov edx, dword ptr ds:[tempEDX]
+	__asm mov ebx, dword ptr ds:[tempEBX]
+	__asm mov esi, dword ptr ds:[tempESI]
+
+	//The code we replaced
+	__asm mov ecx, dword ptr ds:[esi+4]
+	__asm mov dword ptr ds:[ecx+0x16c], 0x3F800000
+	__asm pop esi
+	__asm pop ebx
+	__asm retn 4
+	
+	//__asm jmp retJMP
+}
 //Text
 void callTextModule(int nfuserid, DWORD ebx) {
 	std::string stringcontainingcommand = ReadCharArray(ebx, 1024);
@@ -326,42 +612,142 @@ void callGMModule(int playerid, DWORD edi) {
 	std::string stringcontainingcommand = ReadCharArray(edi, 1024);
 	const char *charmap = stringcontainingcommand.c_str();
 	sprintf(value, "%s", charmap);
-	CBasePlayer *pPlayer = new CBasePlayer;
-	if(strcmp(charmap, "game_playerspawn") == 0) {
-		pPlayer->OnClientSpawn(playerid); //In case we later on want to do something there
-	}
-	delete pPlayer;
 	memset(value, 0, sizeof(value));
 }
 void callOnServerChangeMap( const char* recvcmd ) {
 	CNetwork *cNetwork = new CNetwork;
+	CPlugins *plugin = new CPlugins;
 	cNetwork->OnServerChangeMap();
+	plugin->OnServerChangeMap();
 	delete cNetwork;
-	memset(value, 0, sizeof(value));
+	delete plugin;
+	//memset(value, 0, sizeof(value));
 	//value[0] = 0;
 }
 void callOnPreClientConnect(int pPointer) {
 	CNetwork *cNetwork = new CNetwork;
 	CBasePlayer *pPlayer = new CBasePlayer;
+	CPlugins *plugin = new CPlugins;
 	for(int playerid=0; playerid<pPlayer->MaxClients(); playerid++) {
 		if(!pPlayer->IsClientOnTable(playerid)) { //Find an appropiate internal id index
-			cNetwork->OnPreClientConnect(playerid);
+			cNetwork->OnClientConnect(playerid);
+			plugin->OnClientConnect(playerid);
 			break; //Get out of the loop
 		}
 	}
 	delete cNetwork;
 	delete pPlayer;
+	delete plugin;
 }
-void callOnClientDisconnect(int nfuserid) {
+void callOnClientDisconnect(int clientptr) {
 	CNetwork *cNetwork = new CNetwork;
 	CBasePlayer *pPlayer = new CBasePlayer;
+	CPlugins *plugin = new CPlugins;
+	int edictptr = ReadInt32(clientptr + client_t::pedicts);
+	int nfuserid = pPlayer->GetPlayerUserID(edictptr);
 	int playerid = pPlayer->GetInternalIDFromNFID(nfuserid);
 	cNetwork->OnClientDisconnect(playerid, REASON_DISCONNECT);
+	plugin->OnClientDisconnect(playerid, REASON_DISCONNECT);
 	delete cNetwork;
 	delete pPlayer;
+	delete plugin;
 }
 void callOnClientDeath(int attacker, int receiver) { //Todo put the weapon used as a parameter, gotta do the same for ASM
 	CNetwork *cNetwork = new CNetwork;
+	CPlugins *plugin = new CPlugins;
 	cNetwork->OnClientDeath(attacker, receiver);
+	plugin->OnClientDeath(attacker, receiver);
+	delete cNetwork;
+	delete plugin;
+}
+void callOnClientSpawn(int nfuserid) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	pPlayer->OnClientSpawn(nfuserid);
+	delete pPlayer;
+}
+void callOnClientEquip(int nfuserid) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	pPlayer->OnClientEquip(nfuserid);
+	delete pPlayer;
+}
+void callOnMapLoaded() {
+	CNetwork *cNetwork = new CNetwork;
+	CPlugins *plugin = new CPlugins;
+	cNetwork->OnMapLoaded();
+	plugin->OnMapLoaded();
+	delete cNetwork;
+	delete plugin;
+}
+void callOnClientTimeOut(int edict) {
+	/*
+	CNetwork *cNetwork = new CNetwork;
+	CBasePlayer *pPlayer = new CBasePlayer;
+	int playerid = pPlayer->GetPlayerUserID(edict);
+	playerid = pPlayer->GetInternalIDFromNFID(playerid); //Convert NFID to InternalID
+	cNetwork->OnClientDisconnect(playerid, REASON_TIMEOUT);
+	delete cNetwork;
+	delete pPlayer;
+	*/
+}
+void callOnFireBullets(int edict, Vector vecSrc, Vector vecShootDir, float dist) {
+	CNetwork *cNetwork = new CNetwork;
+	CBasePlayer *pPlayer = new CBasePlayer;
+	engineModule *engine = new engineModule;
+	GameInterface *gui = new GameInterface;
+	int playerid = pPlayer->GetPlayerUserID(edict);
+	playerid = pPlayer->GetInternalIDFromNFID(playerid); //Convert NFID to InternalID
+	float X, Y, Z, screenX, screenY;
+	X = Vector(vecSrc).x;
+	Y = Vector(vecSrc).y;
+	Z = Vector(vecSrc).z;
+	screenX = Vector(vecShootDir).x;
+	screenY = Vector(vecShootDir).y;
+	//Vector vecAbsEnd;
+	printf("callOnFireBullets(%d, X:%f, Y:%f, Z:%f, ScreenX:%f, ScreenY:%f, Dist:%f)\n", playerid, (float)X, (float)Y, (float)Z, (float)screenX, (float)screenY, (float)dist);
+	//engine->UTIL_TraceLine(edict, vecSrc, vecAbsEnd, 0, 0);
+	//
+	//gui->UTIL_Create_TE_DLIGHT(edict, X , Y ,Z, 200, 255, 255, 255, 2000, 0 );
+	gui->UTIL_Create_TE_ELIGHT(edict, X, Y, Z, 1000, 255, 255, 192, 1, 0 );
+	gui->UTIL_Create_TE_DLIGHT(0, X, Y, Z, 20.0, 500.0, 255, 255, 192, 1, 5 );
+	gui->UTIL_ScreenShake(playerid, ~pPlayer->GetFlags(playerid) & FL_DUCKING ? 200 : screenY < 0.05f || screenY > 0.05f ? 5000*((screenX < 0 ? -screenX : screenX)*(screenY < 0 ? -screenY : screenY)) : 2500, 1, 200, 2, 0);
+	//gui->UTIL_ScreenShake(playerid, pPlayer->GetFlags(playerid) & IN_DUCK ? 50 : 5000, 1, 250, 2, 0);
+	delete cNetwork;
+	delete pPlayer;
+	delete engine;
+	delete gui;
+}
+void callOnHudInit(int edictPtr) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	//delete gui;
+	int playerid;
+	playerid = pPlayer->GetPlayerUserID(edictPtr);
+	playerid = pPlayer->GetInternalIDFromNFID(playerid); //Convert NFID to InternalID
+	pPlayer->OnPlayerHudInit(playerid);
+	delete pPlayer;
+	//delete engine;
+}
+void callOnDropFakeClient(int edictPtr) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	CNetwork *cNetwork = new CNetwork;
+	CPlugins *plugin = new CPlugins;
+	//delete gui;
+	int playerid;
+	playerid = pPlayer->GetPlayerUserID(edictPtr);
+	playerid = pPlayer->GetInternalIDFromNFID(playerid); //Convert NFID to InternalID
+	cNetwork->OnClientDisconnect(playerid, REASON_DISCONNECT);
+	plugin->OnClientDisconnect(playerid, REASON_DISCONNECT);
+	delete pPlayer;
+	delete cNetwork;
+	delete plugin;
+	//delete engine;
+}
+void callOnClientReconnect(int edict) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	CNetwork *cNetwork = new CNetwork;
+	int playerid;
+	playerid = pPlayer->GetPlayerUserID(edict);//problem here, if player reconnects, their userid is different so it returns -1
+	playerid = pPlayer->GetInternalIDFromNFID(playerid); //Convert NFID to InternalID
+	cNetwork->OnClientReconnect(playerid);
+	delete pPlayer;
 	delete cNetwork;
 }

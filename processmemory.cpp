@@ -30,6 +30,9 @@ int	ReadInt(DWORD Address){
 UINT32 ReadInt32(DWORD Address){
 	return *(UINT32*)Address;
 }
+void WriteInt32(DWORD Address, UINT32 Value) {
+	*(UINT32*)Address = Value; //typecast variable to a pointer of a byte and dereference the pointer, letting you change what it holds
+}
 void WriteMem(DWORD dwOffset, DWORD dwValue, int len){
     unsigned long Protection;    
     VirtualProtect((void*)dwOffset, 1, PAGE_READWRITE, &Protection);
@@ -63,6 +66,26 @@ std::string ReadCharArray(DWORD Address, int length){
 	}
 	std::string ret(value);
 	return ret;
+}
+void WriteCharArray(DWORD Address, char * string, bool ZeroTheEnd){
+	DWORD AddressBkp = Address;
+
+	int max_length = 1024;
+	int pos = 0;
+	while ( pos < max_length ){
+		if(string[pos] == 0x00){
+			break;
+		}
+
+		*(char*)Address = string[pos];
+
+		Address++;
+		pos++;
+	}
+	if ( ZeroTheEnd ){
+		Address++;
+		*(char*)Address = 0x00; //this didnt work
+	}
 }
 //enums
 BYTE memGetByte(int ptr){
@@ -120,7 +143,7 @@ void WRITE_LONG(int value){
 		add esp,4
 	}
 }
-void WRITE_CHAR(char *value){
+void WRITE_CHAR(int value){
 	DWORD func = ADR_WRITE_CHAR;
 	__asm {
 		push value
@@ -171,9 +194,62 @@ void MESSAGE_BEGIN(int edictptr, int unknown, int msgtype, int towho){
 		add esp,0x10
 	}
 }
+/*
+int UserMessageBegin(int edictptr, int broadcast, int unknown2, char* msgtype) {
+	DWORD func = ADR_USERMESSAGEBEGIN;
+	DWORD ret;
+	__asm {
+		push edictptr
+		push broadcast
+		push unknown2
+		push msgtype
+		call func
+		add esp, 0x10
+		mov ret, eax;
+	}
+	return (int)ret;
+}
+*/
+int UserMessageBegin(int towho, char* msgtype) {
+	DWORD func = ADR_USERMESSAGEBEGIN; //this is supposed to be usermessagebegin
+	DWORD ret;
+	__asm {
+		push towho //msg_broadcast, msg_one, etc
+		push msgtype //SayText
+		call func
+		mov ret, eax;
+		add esp,0x8
+	}
+	return (int)ret;
+}
 void MESSAGE_END(){
 	DWORD func = ADR_MESSAGE_END;
 	__asm {
 		call func
 	}
+}
+
+unsigned short FixedUnsigned16( float value, float scale )
+{
+	int output;
+
+	output = value * scale;
+	if ( output < 0 )
+		output = 0;
+	if ( output > 0xFFFF )
+		output = 0xFFFF;
+
+	return (unsigned short)output;
+}
+
+short FixedSigned16(float value, float scale)
+{
+	int output = (int)(value * scale);
+
+	if (output > 32767)
+		output = 32767;
+	else if (output < -32768)
+		output = -32768;
+
+	return (short)output;
 }

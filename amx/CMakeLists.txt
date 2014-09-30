@@ -1,10 +1,13 @@
 #build file for CMake, see http://www.cmake.org/
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+IF(COMMAND cmake_policy)
+  cmake_policy(SET CMP0003 NEW)
+ENDIF(COMMAND cmake_policy)
 
 PROJECT(pawnamx)
 
-SET(CMAKE_MODULE_PATH "${pawn_SOURCE_DIR}/cmake_modules")
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 
 # check for optional include files
 INCLUDE(${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake)
@@ -33,14 +36,13 @@ ENDIF(HAVE_ALLOCA_H)
 FIND_PACKAGE(Dyncall)
 IF(DYNCALL_FOUND)
   ADD_DEFINITIONS(-DHAVE_DYNCALL_H)
-  INCLUDE_DIRECTORIES(${DYNCALL_INCLUDE_DIR} ${DYNLOAD_INCLUDE_DIR})
+  INCLUDE_DIRECTORIES(${DYNCALL_INCLUDE_DIR})
 ENDIF(DYNCALL_FOUND)
 
 
 ADD_DEFINITIONS(-DFLOATPOINT -DFIXEDPOINT)
 IF (UNIX)
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../linux)
-  ADD_DEFINITIONS(-D_GNU_SOURCE)
 ENDIF (UNIX)
 IF(WIN32)
   ADD_DEFINITIONS(-DPAWN_DLL -DSTDECL -D_CRT_SECURE_NO_WARNINGS)
@@ -104,7 +106,7 @@ IF(UNIX)
 ENDIF(UNIX)
 
 # amxFixed
-SET(FIXED_SRCS amxfixed.c amx.c)
+SET(FIXED_SRCS fixed.c amx.c)
 ADD_LIBRARY(amxFixed SHARED ${FIXED_SRCS})
 SET_TARGET_PROPERTIES(amxFixed PROPERTIES PREFIX "")
 IF(WIN32)
@@ -121,7 +123,7 @@ IF(UNIX)
 ENDIF(UNIX)
 
 # amxFloat
-SET(FLOAT_SRCS amxfloat.c amx.c)
+SET(FLOAT_SRCS float.c amx.c)
 ADD_LIBRARY(amxFloat SHARED ${FLOAT_SRCS})
 SET_TARGET_PROPERTIES(amxFloat PROPERTIES PREFIX "")
 IF(WIN32)
@@ -194,7 +196,7 @@ ENDIF(UNIX)
 # --------------------------------------------------------------------------
 # Simple run-time (example program)
 
-SET(PAWNRUN_SRCS pawnrun.c amx.c amxcore.c amxcons.c amxpool.c amxdbg.c)
+SET(PAWNRUN_SRCS pawnrun.c amx.c amxcore.c amxcons.c amxdbg.c)
 IF (UNIX)
   SET(PAWNRUN_SRCS ${PAWNRUN_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/../linux/binreloc.c)
   IF(NOT HAVE_CURSES_H)
@@ -215,7 +217,7 @@ ENDIF (UNIX)
 # --------------------------------------------------------------------------
 # Simple console debugger
 
-SET(PAWNDBG_SRCS pawndbg.c amx.c amxcore.c amxcons.c amxpool.c amxdbg.c)
+SET(PAWNDBG_SRCS pawndbg.c amx.c amxcore.c amxcons.c amxdbg.c)
 IF (UNIX)
   SET(PAWNDBG_SRCS ${PAWNDBG_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/../linux/binreloc.c)
   IF(NOT HAVE_CURSES_H)

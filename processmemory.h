@@ -67,9 +67,11 @@ void WriteInProcessFloat(DWORD Address, FLOAT Value);
 void WriteInProcessInt32(DWORD Address, INT32 Value);
 void WriteInProcessChar(DWORD Address, char* Value);
 //New
+void WriteInt32(DWORD Address, UINT32 Value);
 UINT32 ReadInt32(DWORD Address);
 BYTE Read(DWORD address, int length);
 std::string ReadCharArray(DWORD Address, int length);
+void WriteCharArray(DWORD Address, char *string, bool ZeroTheEnd);
 //enums
 BYTE memGetByte(int ptr);
 BYTE memGetInt(int ptr);
@@ -93,7 +95,13 @@ void WRITE_ANGLE(Vector value);
 void WRITE_STRING(char *value);
 void WRITE_ENTITY(int value);
 void MESSAGE_BEGIN(int edictptr, int unknown, int msgtype, int towho);
+//int UserMessageBegin(int edictptr, int broadcast, int unknown2, char* msgtype);
+int UserMessageBegin(int towho, char* msgtype);
 void MESSAGE_END();
+
+//Signed, unsigned fixes..
+unsigned short FixedUnsigned16( float value, float scale );
+short FixedSigned16(float value, float scale);
 //cmd's
 //BYTE cmdGive = {0xA1, 0x38, 0x2E, 0xB8, 0x44, 0x5, 0x78, 0x4B, 0x0, 0x0, 0x8B, 0x8, 0x8B, 0x89, 0x1C, 0x1, 0x0, 0x0, 0x68, 0x3C, 0x2E, 0xB8, 0x44, 0xE8, 0xDF, 0x6, 0xFC, 0xFE, 0xC7, 0x5, 0x34, 0x2E, 0xB8, 0x44, 0x0, 0x0, 0x0, 0x0, 0x61, 0xC3};
 #endif

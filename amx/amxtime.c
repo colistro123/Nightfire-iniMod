@@ -1,6 +1,6 @@
 /*  Date/time module for the Pawn Abstract Machine
  *
- *  Copyright (c) ITB CompuPhase, 2001-2011
+ *  Copyright (c) ITB CompuPhase, 2001-2009
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -14,7 +14,7 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxtime.c 4541 2011-07-21 12:15:13Z thiadmer $
+ *  Version: $Id: amxtime.c 4125 2009-06-15 16:51:06Z thiadmer $
  */
 #include <time.h>
 #include <assert.h>
@@ -66,10 +66,6 @@ static unsigned long gettimestamp(void)
 
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
     value=timeGetTime();        /* this value is already in milliseconds */
-  #elif defined __linux || defined __linux__ || defined __LINUX__
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    value = ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
   #else
     value=clock();
     #if CLOCKS_PER_SEC<1000
@@ -229,12 +225,12 @@ static cell AMX_NATIVE_CALL n_gettime(AMX *amx, const cell *params)
    * library; in that case gmtime() and localtime() return the same value
    */
   gtm=*localtime(&sec1970);
-  cptr=amx_Address(amx,params[1]);
-  *cptr=gtm.tm_hour;
-  cptr=amx_Address(amx,params[2]);
-  *cptr=gtm.tm_min;
-  cptr=amx_Address(amx,params[3]);
-  *cptr=gtm.tm_sec;
+  if (amx_GetAddr(amx,params[1],&cptr)==AMX_ERR_NONE)
+    *cptr=gtm.tm_hour;
+  if (amx_GetAddr(amx,params[2],&cptr)==AMX_ERR_NONE)
+    *cptr=gtm.tm_min;
+  if (amx_GetAddr(amx,params[3],&cptr)==AMX_ERR_NONE)
+    *cptr=gtm.tm_sec;
 
   /* the time() function returns the number of seconds since January 1 1970
    * in Universal Coordinated Time (the successor to Greenwich Mean Time)
@@ -267,12 +263,12 @@ static cell AMX_NATIVE_CALL n_getdate(AMX *amx, const cell *params)
   time(&sec1970);
 
   gtm=*localtime(&sec1970);
-  cptr=amx_Address(amx,params[1]);
-  *cptr=gtm.tm_year+1900;
-  cptr=amx_Address(amx,params[2]);
-  *cptr=gtm.tm_mon+1;
-  cptr=amx_Address(amx,params[3]);
-  *cptr=gtm.tm_mday;
+  if (amx_GetAddr(amx,params[1],&cptr)==AMX_ERR_NONE)
+    *cptr=gtm.tm_year+1900;
+  if (amx_GetAddr(amx,params[2],&cptr)==AMX_ERR_NONE)
+    *cptr=gtm.tm_mon+1;
+  if (amx_GetAddr(amx,params[3],&cptr)==AMX_ERR_NONE)
+    *cptr=gtm.tm_mday;
 
   return gtm.tm_yday+1;
 }
@@ -288,11 +284,12 @@ static cell AMX_NATIVE_CALL n_tickcount(AMX *amx, const cell *params)
   assert(params[0]==(int)sizeof(cell));
 
   INIT_TIMER();
-  cptr=amx_Address(amx,params[1]);
   #if defined __WIN32__ || defined _WIN32 || defined WIN32
-    *cptr=1000;               	/* granularity = 1 ms */
+    if (amx_GetAddr(amx,params[1],&cptr)==AMX_ERR_NONE)
+      *cptr=1000;               /* granularity = 1 ms */
   #else
-    *cptr=(cell)CLOCKS_PER_SEC;	/* in Unix/Linux, this is often 100 */
+    if (amx_GetAddr(amx,params[1],&cptr)==AMX_ERR_NONE)
+      *cptr=(cell)CLOCKS_PER_SEC;       /* in Unix/Linux, this is often 100 */
   #endif
   return gettimestamp() & 0x7fffffff;
 }
@@ -337,10 +334,10 @@ static cell AMX_NATIVE_CALL n_gettimer(AMX *amx, const cell *params)
   cell *cptr;
 
   assert(params[0]==(int)(2*sizeof(cell)));
-  cptr=amx_Address(amx,params[1]);
-  *cptr=timelimit;
-  cptr=amx_Address(amx,params[2]);
-  *cptr=timerepeat;
+  if (amx_GetAddr(amx,params[1],&cptr)==AMX_ERR_NONE)
+    *cptr=timelimit;
+  if (amx_GetAddr(amx,params[1],&cptr)==AMX_ERR_NONE)
+    *cptr=timerepeat;
   return timelimit>0;
 }
 

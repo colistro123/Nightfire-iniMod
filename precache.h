@@ -31,9 +31,11 @@ public:
 	//Precaching
 	int IsItemOnPrecacheTable( const char* actualprecache );
 	void AddPrecacheToTable(int type, const char* actualprecache);
-	void PreloadCached( void );
+	void PreloadCached( bool remove );
 	int GetPrecacheID(const char* actualprecache);
 	void RemovePrecacheFromTable( int precacheid );
+	void RemoveAllPrecacheFromTable( void );
+	int TotalPrecached();
     //Destructor
     virtual ~Precache() { };
 	char* msg;

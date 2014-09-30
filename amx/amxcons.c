@@ -4,7 +4,7 @@
  *  cannot always be implemented with portable C functions. In other words,
  *  these routines must be ported to other environments.
  *
- *  Copyright (c) ITB CompuPhase, 1997-2011
+ *  Copyright (c) ITB CompuPhase, 1997-2009
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not
  *  use this file except in compliance with the License. You may obtain a copy
@@ -18,19 +18,10 @@
  *  License for the specific language governing permissions and limitations
  *  under the License.
  *
- *  Version: $Id: amxcons.c 4523 2011-06-21 15:03:47Z thiadmer $
+ *  Version: $Id: amxcons.c 4125 2009-06-15 16:51:06Z thiadmer $
  */
 
-//Ignacio Added 8/12/2014 willingly taken from http://www.filewatcher.com/p/el-192.tar.bz2.2181980/el-192/pawn/amx.h.html
-// We want floating point support
-#define FLOATPOINT
-#if PAWN_CELL_SIZE == 32
-#define REAL float
-#elif PAWN_CELL_SIZE == 64
-#define REAL double
-#else
-//Invalid Cell Size
-#endif
+#define FLOATPOINT //Floating point support
 
 #if defined _UNICODE || defined __UNICODE__ || defined UNICODE
 # if !defined UNICODE   /* for Windows */
@@ -47,7 +38,6 @@
 #include <string.h>
 #include <assert.h>
 #if defined __WIN32__ || defined _WIN32 || defined WIN32 || defined __MSDOS__
-  #define HAVE_CONIO
   #include <conio.h>
   #include <malloc.h>
 #endif
@@ -486,6 +476,7 @@
   #define amx_putstr(s)       printf("%s",(s))
   #define amx_putchar(c)      putchar(c)
   #define amx_fflush()        fflush(stdout)
+  #define amx_getch()         getch()
   #define amx_gets(s,n)       fgets(s,n,stdin)
   #define amx_clrscr()        (void)(0)
   #define amx_clreol()        (void)(0)
@@ -495,13 +486,7 @@
   #define amx_termctl(c,v)    ((void)(c),(void)(v),(0))
   #define amx_console(c,l,f)  ((void)(c),(void)(l),(void)(f))
   #define amx_viewsize        (*(x)=80,*(y)=25)
-  #if defined HAVE_CONIO
-    #define amx_getch()       getch()
-    #define amx_kbhit()       kbhit()
-  #else
-    #define amx_getch()       getchar()
-    #define amx_kbhit()       (0)
-  #endif
+  #define amx_kbhit()         kbhit()
 #endif
 
 #if !defined AMX_TERMINAL && (defined __WIN32__ || defined _WIN32 || defined WIN32)
@@ -710,7 +695,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
 
   switch (ch) {
   case __T('c'):
-    cptr=amx_Address(amx,param);
+    amx_GetAddr(amx,param,&cptr);
     width--;            /* single character itself has a with of 1 */
     if (sign!=__T('-'))
       while (width-->0)
@@ -723,7 +708,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
   case __T('d'): {
     cell value;
     int length=1;
-    cptr=amx_Address(amx,param);
+    amx_GetAddr(amx,param,&cptr);
     value=*cptr;
     if (value<0 || sign==__T('+'))
       length++;
@@ -760,7 +745,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
     if (width>0)
       _stprintf(formatstring+_tcslen(formatstring),__T("%d"),width);
     _stprintf(formatstring+_tcslen(formatstring),__T(".%df"),digits);
-    cptr=amx_Address(amx,param);
+    amx_GetAddr(amx,param,&cptr);
     #if PAWN_CELL_SIZE == 64
       _stprintf(buffer,formatstring,*(double*)cptr);
     #else
@@ -781,7 +766,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
 #if !defined FLOATPOINT
   case __T('r'): /* if fixed point is enabled, and floating point is not, %r == %q */
 #endif
-    cptr=amx_Address(amx,param);
+    amx_GetAddr(amx,param,&cptr);
     /* format the number */
     if (digits==INT_MAX)
       digits=3;
@@ -808,7 +793,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
     info.f_putstr=f_putstr;
     info.f_putchar=f_putchar;
     info.user=user;
-    cptr=amx_Address(amx,param);
+    amx_GetAddr(amx,param,&cptr);
     amx_printstring(amx,cptr,&info);
     return 1;
   } /* case */
@@ -816,7 +801,7 @@ static int dochar(AMX *amx,TCHAR ch,cell param,TCHAR sign,TCHAR decpoint,int wid
   case __T('x'): {
     ucell value;
     int length=1;
-    cptr=amx_Address(amx,param);
+    amx_GetAddr(amx,param,&cptr);
     value=*(ucell*)cptr;
     while (value>=0x10) {
       length++;
@@ -1064,7 +1049,7 @@ static cell AMX_NATIVE_CALL n_print(AMX *amx,const cell *params)
   info.length= ((size_t)params[0]>=3*sizeof(cell)) ? (int)(params[3]-info.skip) : INT_MAX;
 
   CreateConsole();
-  cstr=amx_Address(amx,params[1]);
+  amx_GetAddr(amx,params[1],&cstr);
   amx_printstring(amx,cstr,&info);
   amx_fflush();
   return 0;
@@ -1081,7 +1066,7 @@ static cell AMX_NATIVE_CALL n_print(AMX *amx,const cell *params)
   /* set the new colours */
   oldcolours=amx_setattr((int)params[2],(int)params[3],(int)params[4]);
 
-  cstr=amx_Address(amx,params[1]);
+  amx_GetAddr(amx,params[1],&cstr);
   amx_printstring(amx,cstr,NULL);
 
   /* reset the colours */
@@ -1103,7 +1088,7 @@ static cell AMX_NATIVE_CALL n_printf(AMX *amx,const cell *params)
   info.length=INT_MAX;
 
   CreateConsole();
-  cstr=amx_Address(amx,params[1]);
+  amx_GetAddr(amx,params[1],&cstr);
   amx_printstring(amx,cstr,&info);
   amx_fflush();
   return 0;
@@ -1134,7 +1119,6 @@ static cell AMX_NATIVE_CALL n_getstring(AMX *amx,const cell *params)
   int c,chars,max;
   cell *cptr;
 
-  (void)amx;
   CreateConsole();
   chars=0;
   max=(int)params[2];
@@ -1165,7 +1149,7 @@ static cell AMX_NATIVE_CALL n_getstring(AMX *amx,const cell *params)
     assert(chars<max);
     str[chars]='\0';
 
-    cptr=amx_Address(amx,params[1]);
+    amx_GetAddr(amx,params[1],&cptr);
     amx_SetString(cptr,(char*)str,(int)params[3],sizeof(TCHAR)>1,max);
 
   } /* if */
@@ -1204,14 +1188,13 @@ static int inlist(AMX *amx,int c,const cell *params,int num)
 {
   int i, key;
 
-  (void)amx;
   for (i=0; i<num; i++) {
     if (i==0) {
       /* first key is passed by value, others are passed by reference */
       key = (int)params[i];
     } else {
       cell *cptr;
-      cptr=amx_Address(amx,params[i]);
+      amx_GetAddr(amx,params[i],&cptr);
       key=(int)*cptr;
     } /* if */
     if (c==key || c==-key)
@@ -1250,7 +1233,7 @@ static cell AMX_NATIVE_CALL n_getvalue(AMX *amx,const cell *params)
 
     /* check end of input */
     #if EOL_CHAR!='\r'
-      if (c==EOL_CHAR && inlist(amx,'\r',params+2,(int)params[0]/sizeof(cell)-1)!=0)
+      if (c=='\r' && inlist(amx,'\r',params+2,(int)params[0]/sizeof(cell)-1)!=0)
         c='\r';
     #endif
     if ((chars>1 || chars>0 && sign>0)
@@ -1318,13 +1301,12 @@ static cell AMX_NATIVE_CALL n_wherexy(AMX *amx,const cell *params)
   cell *px,*py;
   int x,y;
 
-  (void)amx;
   CreateConsole();
   amx_wherexy(&x,&y);
-  px=amx_Address(amx,params[1]);
-  py=amx_Address(amx,params[2]);
-  *px=x;
-  *py=y;
+  amx_GetAddr(amx,params[1],&px);
+  amx_GetAddr(amx,params[2],&py);
+  if (px!=NULL) *px=x;
+  if (py!=NULL) *py=y;
   return 0;
 }
 

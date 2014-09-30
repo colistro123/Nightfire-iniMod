@@ -3,20 +3,19 @@
  */
 #include "amx.h"
 
-static cell n_power(AMX *amx, const cell *params)
+static cell n_power(AMX *amx, cell *params)
 {
   /* power(value, exponent);
    *   params[1] = value
    *   params[2] = exponent
    */
   cell result = 1;
-  cell exponent = params[2];
-  while (exponent-- > 0)
+  while (params[2]-- > 0)
     result *= params[1];
   return result;
 }
 
-static cell n_sqroot(AMX *amx, const cell *params)
+static cell n_sqroot(AMX *amx, cell *params)
 {
   /* sqroot(value);
    *   params[1] = value
