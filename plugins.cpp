@@ -42,7 +42,7 @@ void CPlugins::ParsePlugins(char *plugins) {
 	char output[128], scriptpath[128];
 	int offset = cmdPtr->returnCommandParamCount(plugins);
 	if(offset != 0) {
-		for(int i=0; i<=offset; i++) {
+		for(int i=0; i < offset; i++) {
 			strcpy(output, (char *)utils->ExplodeAndReturn(plugins, i, " ").c_str());
 			if(strlen(output) > 0) {
 				sprintf(scriptpath, "%s/%s", PLUGINS_DIR, output);
@@ -308,7 +308,7 @@ void CPlugins::OnClientEquip(cell playerid) {
 /* Unrelated to the game mode calls - This does a client loop */
 void CPlugins::UpdatePlayers( void ) {
 	CBasePlayer *pPlayer = new CBasePlayer;
-	for(size_t i=0; i<ReadInt32(SV_MAXCLIENTS); i++) {
+	for(size_t i=0; i<ReadInt32(SVS_MAXCLIENTS); i++) {
 		if(pPlayer->IsClientConnected(i)) {
 			if(pPlayer->IsClientOnTable(i)) {
 				OnClientUpdate(i);

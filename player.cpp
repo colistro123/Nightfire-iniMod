@@ -24,6 +24,7 @@ float	CBasePlayer::z = 0;
 char*	CBasePlayer::alivestatus = "Dead";
 char*	CBasePlayer::bondexe;
 //int		CBasePlayer::cptr = 0;
+int		CBasePlayer::NumPlayersWithoutDynamicLightSupport = 0;
 int		CBasePlayer::edictptr = 0;
 //int		CBasePlayer::ptr = 0;
 double	CBasePlayer::curtime = 0;
@@ -57,6 +58,91 @@ int CBasePlayer::getPointerForPlayerID( int playerid ) {
 	//memSetPtr(cptr);
 	return cptr;
 }
+Vector CBasePlayer::GetGunPos(int edict) {
+	Vector retvect;
+	__asm { 
+		//push eax
+		push ecx
+		push edx
+		lea eax, retvect
+		mov ecx, edict
+		mov ecx, dword ptr ds:[ecx + 0x11c]
+		mov ecx, dword ptr ds:[ecx + 0x0A0C] //gets m_pPlayer of edict
+		mov ecx, dword ptr ds:[ecx + 0x78]
+		mov edx, dword ptr ds:[ecx]
+		push eax
+		call dword ptr ds:[edx + 0x248] //GetGunPos
+		pop edx
+		pop ecx
+		//pop eax
+	}
+#ifdef DEBUG
+	printf("Player Gun Pos: %f %f %f\n", retvect.x, retvect.y, retvect.z);
+#endif
+	return retvect;
+}
+Vector CBasePlayer::EyeAngles(int edict) {
+	//same as v_angle
+	engineModule *engine = new engineModule;
+	int cptr = engine->SV_EdictToClient(edict);
+	delete engine;
+	if ( cptr ) {
+		if ( memGetInt(cptr + client_t::pspawned) ) {
+			int adr = ReadInt32(edict + edict::pentity);
+			adr = ReadInt32(adr + player::punknown4);
+			return Vector((ReadFloat(adr + player::peyeanglesx)), ReadFloat(adr + player::peyeanglesy), ReadFloat(adr + player::peyeanglesz));
+		}
+	}
+	return NULL;
+}
+Vector CBasePlayer::WeaponAngles(int edict) {
+	engineModule *engine = new engineModule;
+	int cptr = engine->SV_EdictToClient(edict);
+	delete engine;
+	if ( cptr ) {
+		if ( memGetInt(cptr + client_t::pspawned) ) {
+			int adr = ReadInt32(edict + edict::pentity);
+			adr = ReadInt32(adr + player::punknown4);
+									//you can * this by -3 to get eye angle pitch
+			return Vector((ReadFloat(adr + player::pweaponanglesx)), ReadFloat(adr + player::pweaponanglesy), ReadFloat(adr + player::pweaponanglesz));
+		}
+	}
+	return NULL;
+}
+Vector CBasePlayer::v_angle( int edictptr ) {
+	//this function is the same thing as EyeAngles
+	edictptr += 0x120;
+	//edictptr is now 1c1a6940
+	static Vector vec;
+	__asm {
+		push edx
+		push ecx
+		lea edx, vec
+		mov eax, edictptr
+		mov ecx, dword ptr ds:[eax + 0x74]
+		mov dword ptr ds:[esp - 4], ecx
+		fld dword ptr ss:[esp - 4]
+		fstp dword ptr ds:[edx]
+		mov ecx, dword ptr ds:[eax + 0x78]
+		mov dword ptr ds:[esp - 4], ecx
+		fld dword ptr ss:[esp - 4]
+		fstp dword ptr ds:[edx + 4]
+		mov ecx, dword ptr ds:[eax + 0x7C]
+		mov dword ptr ds:[esp - 4], ecx
+		fld dword ptr ss:[esp - 4]
+		fstp dword ptr ds:[edx + 8]
+		pop ecx
+		pop edx
+	}
+#if DEBUG
+	printf( "v_angle: %f %f %f\n", vec.x, vec.y, vec.z);
+#endif
+	return vec; 
+}
+Vector CBasePlayer::punchangle( int edictptr ) {
+	edictptr += 0x120;
+	return Vector(ReadFloat(edictptr + 0x68), ReadFloat(edictptr + 0x6C), ReadFloat(edictptr + 0x70));
+}
 void CBasePlayer::SetPlayerHealth(int playerid, int percent) {
 	int cptr = 0;
 	cptr = getPointerForPlayerID(playerid);
@@ -66,7 +152,7 @@ void CBasePlayer::SetPlayerHealth(int playerid, int percent) {
 	int adr = ReadInt32(cptr + client_t::pedicts);
 	adr = ReadInt32(adr + edict::pentity);
 	adr = ReadInt32(adr + player::punknown4);
-	WriteInProcessFloat(adr + player::phealth , float(percent * 2));
+	WriteInProcessFloat((adr + player::phealth) , float(percent * 2));
 }
 float CBasePlayer::GetPlayerHealth(int playerid) {
 	int cptr = 0;
@@ -92,6 +178,7 @@ int CBasePlayer::IsClientConnectedEx( int playerid ) {
 	return 0;
 }
 int CBasePlayer::OnClientSpawn( int playerid ) {
+	printf("OnClientSpawn(%d) has been called.\n", playerid);
 	//Scripting call (Gamemode)
 	CNetwork *cNetwork = new CNetwork;
 	CPlugins *plugin = new CPlugins;
@@ -102,6 +189,7 @@ int CBasePlayer::OnClientSpawn( int playerid ) {
 	return 1;
 }
 int CBasePlayer::OnClientEquip( int playerid ) {
+	printf("OnClientEquip(%d) has been called.\n", playerid);
 	//Scripting call (Gamemode)
 	CNetwork *cNetwork = new CNetwork;
 	CPlugins *plugin = new CPlugins;
@@ -112,7 +200,7 @@ int CBasePlayer::OnClientEquip( int playerid ) {
 	return 1;
 }
 void CBasePlayer::ProcessClientsOnMapLoad( void ) {
-	for(int i=0; i<ReadInt32(SV_MAXCLIENTS); i++) {
+	for(int i=0; i<ReadInt32(SVS_MAXCLIENTS); i++) {
 		if(!IsClientOnTable(i)) {
 			if(IsClientConnected(i)) {
 				printf("CBasePlayer::The client was not on the table, so he or she has been added to it. id: %d\n", i);
@@ -121,7 +209,27 @@ void CBasePlayer::ProcessClientsOnMapLoad( void ) {
 		}
 	}
 }
-int CBasePlayer::IsClientConnected( int playerid ) { //This lets us know if the client is connected, but this is straight from the engine. I'll use this to update the list
+bool CBasePlayer::SupportsDynamicLights( int playerid ) {
+	std::vector<_PlayerInfo>::iterator it = players.begin();
+	_PlayerInfo player;
+	while(it != players.end()) {
+		player = *(it++);
+		if(playerid == player.pinternaluserid)
+			return player.supportsdynamiclights;
+	}
+	return false;
+}
+float CBasePlayer::GetGameVer( int playerid ){
+	std::vector<_PlayerInfo>::iterator it = players.begin();
+	_PlayerInfo player;
+	while(it != players.end()) {
+		player = *(it++);
+		if(playerid == player.pinternaluserid)
+			return player.gamever;
+	}
+	return 0.0f;
+}
+bool CBasePlayer::IsClientConnected( int playerid ) { //This lets us know if the client is connected, but this is straight from the engine. I'll use this to update the list
 	int cptr = 0;
 	cptr = getPointerForPlayerID(playerid);
 	return cptr == 0 ? 0 : ReadInt32(cptr + client_t::pconnected);
@@ -310,13 +418,26 @@ void CBasePlayer::AddPlayerToTable(int playerid) {
 		new_player.score = score;
 		new_player.ping = ping;
 		*/
-		userinfostring = ReadCharArray(cptr + client_t::puserinfo, 128);
+		userinfostring = ReadCharArray(cptr + client_t::puserinfo, 511);
 		new_player.plagcompensation = ReadByte(cptr + client_t::plagcompensation);
 		new_player.pfakeclient = ReadByte(cptr + client_t::pfakeclient);
 
 		new_player.puserinfo = userinfostring;
-
 		new_player.connected = ReadByte(cptr + client_t::pconnected); //The client is now connected, put this on our table
+		new_player.gamever = 0.0f;
+		new_player.supportsdynamiclights = false;
+		if(new_player.pfakeclient == 0) {
+		string gamever = GetUserInfoStringValue("gamever", edictptr);
+		char string[64];
+		strcpy(string, utils->ExplodeAndReturn(gamever, 0, " ").c_str());
+		if( strlen(string) > 0 )
+			new_player.gamever = stof((const char*)string);
+			new_player.supportsdynamiclights = ( new_player.gamever > 5.81f );
+		}
+		NumPlayersWithoutDynamicLightSupport+= !new_player.supportsdynamiclights;
+
+		strcpy(new_player.name, (char *)GetClientName(playerid).c_str());
+		
 		new_player.puserid = GetPlayerUserID(edictptr);
 		new_player.pconnecttime = Sys_FloatTime() * 1000.0f;
 		new_player.pspawned = ReadByte(cptr + client_t::pspawned);
@@ -406,10 +527,8 @@ int CBasePlayer::NumClientsOnTable() {
 	}
 	return i;
 }
-int CBasePlayer::IsAClient(int playerid) {
-	int cptr = 0;
-	cptr = getPointerForPlayerID(playerid);
-	return ReadByte(cptr + client_t::pfakeclient) ? 0 : 1;
+bool CBasePlayer::IsAClient(int playerid) {
+	return !(bool)ReadByte((getPointerForPlayerID(playerid) + client_t::pfakeclient));
 }
 string CBasePlayer::FetchInfoForPlayerID( int playerid ) {
 	int cptr = 0;
@@ -611,18 +730,18 @@ void CBasePlayer::SpectatePlayer(int playerid, int tospectate) { //Switches to t
 		int unknownptr_new = ReadInt32(newentptr + 0x4);
 
 		int movetype = ReadInt32(unknownptr_new + 0x108);
-		WriteInt32(unknownptr_new + 0x108, MOVETYPE_FOLLOW ); //set the entity's movetype
+		WriteInt32((unknownptr_new + 0x108), MOVETYPE_FOLLOW ); //set the entity's movetype
 		//engine->SetMoveType(ptr, MOVETYPE_FOLLOW);
 		int solidtype = ReadInt32(unknownptr_new + 0x10C);
-		WriteInt32(unknownptr_new + 0x10C, SOLID_NOT); //must set not solid to our new entity or else it crashes
+		WriteInt32((unknownptr_new + 0x10C), SOLID_NOT); //must set not solid to our new entity or else it crashes
 		//engine->SetSolidType(ptr, SOLID_NOT);
 
-		//int newindexofedict = engine->IndexOfEdict(targetedict); //this shit is from CSprite::Precache, it's extremely difficult to comprehend, and doesn't seem to work
+		//int newindexofedict = engine->IndexOfEdict(targetedict); //this is from CSprite::Precache, it's extremely difficult to comprehend, and doesn't seem to work
 		//WriteInt32(unknownptr_new + 0x110, newindexofedict); //m_hAttachedToEntity
 		//WriteInt32(unknownptr_new+0x114, 0); //m_nAttachment
 
 		int aiment = ReadInt32(unknownptr_new + 0x194);
-		WriteInt32(unknownptr_new + 0x194, spectatethisedict); //set the entity to follow the target player
+		WriteInt32((unknownptr_new + 0x194), spectatethisedict); //set the entity to follow the target player
 		//engine->EntitySetFollowEntity(edict);
 		int drawflags = ReadInt32(unknownptr_new + 0x118);
 		//engine->GetDrawFlags(edict);
@@ -744,9 +863,9 @@ void CBasePlayer::SetPlayerPos(int playerid, float X, float Y, float Z) {
 		return;
 
 	int adr = ReadInt32(cptr + client_t::pedicts);
-	WriteInProcessFloat(adr + edict::pposX, float(X));
-	WriteInProcessFloat(adr + edict::pposY, float(Y));
-	WriteInProcessFloat(adr + edict::pposZ, float(Z));
+	WriteInProcessFloat((adr + edict::pposX), float(X));
+	WriteInProcessFloat((adr + edict::pposY), float(Y));
+	WriteInProcessFloat((adr + edict::pposZ), float(Z));
 }
 int CBasePlayer::GetPlayerUserID(int edictptr) {
 	DWORD adr = ADR_GETUSERID;
@@ -771,6 +890,7 @@ void CBasePlayer::SetPlayerTeam(int playerid, int team) {
 	*/
 }
 void CBasePlayer::OnPlayerHudInit(int playerid) {
+	printf("OnPlayerHudInit(%d) has been called.\n", playerid);
 	GameInterface *gui = new GameInterface;
 	gui->SendMOTDToClient(playerid);
 	gui->ResetSetView(playerid);
@@ -806,14 +926,14 @@ int CBasePlayer::GetClientPtr(int edictptr) {
 	engineModule *engine = new engineModule;
 	size_t entnum = engine->NUM_FOR_EDICT_FN( edictptr ); //This was int entnum but it was giving a warning, answer from here: http://stackoverflow.com/questions/8188401/c-warning-c4018-signed-unsigned-mismatch
 	delete engine;
-	if (entnum < 1 || entnum > ReadInt32(SV_MAXCLIENTS)) {
+	if (entnum < 1 || entnum > ReadInt32(SVS_MAXCLIENTS)) {
 		printf("WARNING: tried to GetClientPtr a non-client!\n");
 		return 0;
 	}
 	__asm {
 		MOV EAX, entnum
 		MOV ECX,DWORD PTR DS:[0x44A86B4C] //get first clientptr
-		IMUL EAX,EAX,0x4F18 //multiply entnum twice by size of cell
+		IMUL EAX,EAX,0x4F18 //multiply entnum by size of cell
 		LEA EAX,[ECX+EAX+0xFFFFB0E8] //1c100040
 		//LEA ESI,[EAX+0x64] //1c1000a4 keep this in case it's needed later
 		MOV entnum, EAX //according to the sdk, we should be returning esi

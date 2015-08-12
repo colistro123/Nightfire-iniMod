@@ -1,0 +1,5 @@
+C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/ALL_BUILD.dir
+C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/ZERO_CHECK.dir
+C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/pawnc.dir
+C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/pawncc.dir
+C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/pawndisasm.dir

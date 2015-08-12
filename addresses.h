@@ -7,20 +7,29 @@
 /* Addresses */
 //Server related
 
-//#define SERVER_FPS_ADDR			(extern DWORD)0x448BE1C0
-#define SERVER_FPS_ADDR				0x448BE1C0
+//#define HOST_FRAMETIME_ADR			(extern DWORD)0x448BE1C0
+#define ADR_REGISTERVARIABLE		0x43004110
+#define ADR_CVARGETPOINTER			0x43045000
+#define host_client					0x448BE188 //current client ptr the server is busy with
+#define host_framerate_adr			0x448BE5F0
+#define FPS_MAX_ADR					0x448BE638
+#define HOST_FRAMETIME_ADR			0x448BE1C0
+#define REALTIME_ADR				0x448BE138
 #define CONSOLEMSGADDRESS			0x44B7AF08
 #define MSGCALLADDRESS				0x43094920
 #define IS_GAMEMODE_CTF				0x42046453
 #define HUDMSGADDRESS				0x4201108D
 #define CONSOLECOMMAND				0x43045B00
 //#define HUDOBJECTIVE				0x42011C46 //this is wrong
-#define SV_MAXCLIENTS				0x44A86B50
+#define SVS_MAXCLIENTS				0x44A86B50
 #define SV_NUMCLIENTS				0x44B82E6C
 #define SV_CURRENTMAP				0x44A2A3B8
 #define SCR_SHOW_MSG				0x4205A720
 #define ADR_ClientPrint				0x4205A720
 #define ADR_CLIENT_PRINTF			0x4306B970
+#define sv_edictsadr				0x44A7B9A4 //sv.edicts
+#define	svs_clientsadr				0x44A86B4C //svs.clients
+#define SV_EDICTTOCLIENTPTR_ADR		0x44BAA10E
 //precache
 #define ADR_PrecacheSound			0x4306ced0
 #define ADR_PrecacheEvent			0x4306cfd0
@@ -75,9 +84,10 @@
 #define ADR_SetView					0x4306e210
 #define ADR_GetPlayerStats			0x4306f2b0
 #define ADR_INVALID_CMD				0x43043A74
+#define ADR_NEW_INVALID_CMD			0x43045C54
 #define ADR_TRIGGER_EVT				0x420C8053 //0x420C8053 //Death, Spawn, Leave, Connect, Etc
 #define ADR_INIT_HUD				0x42081F32 //After player spawns for the first time
-#define ADR_CONNECT_FN				0x4308BA29 //0x4203F9B0 OLD Address for the Connect Function
+#define ADR_CONNECT_FN				0x4308B9D6 // prev address 0x4308BA29 //0x4203F9B0 OLD Address for the Connect Function
 #define ADR_ADDBOT_FN				0x4202492F
 #define ADR_DISCONNECT_FN			0x42047E9D //Disconnect Function
 #define ADR_CHANGEMAP_FN			0x420D35DB //OnServerChangeMap
@@ -106,7 +116,13 @@
 #define ADR_FAKECLIENTMAPCHANGE		0x43088B5A
 #define ADR_DROPCLIENT_HOOK			0x430574FA
 #define ADR_UTIL_REMOVE				0x42059350
+#define ADR_UTIL_MAKEVECTORS		0x4306B660
+#define ADR_V_FORWARD				0x44B74168 //vector
+#define ADR_V_PUNCHANGLE			0x
 #define ADR_RECONNECT_FN			0x4308B5F9
+#define ADR_HOST_RUNFRAME			0x43058DB5
+#define ADR_MAINRUNFRAME			0x470E6B
+#define ADR_SV_DISCONNECTCLIENT		0x4203FBA0
 //#define ADR_FIRE_BULLETS_HOOK		0x42042DEE
 //These are not addresses
 #define MSG_BROADCAST	0	// unreliable message, sent to all
@@ -117,7 +133,7 @@
 #define MSG_PAS			5	//Ents in PAS of origin
 
 //String related
-#define MAX_PLAYER_NAME		24
+#define MAX_PLAYER_NAME		32
 #define MAX_STRING_LEN		512
 #define MAX_MOTD_CHUNK		60
 #define MAX_MOTD_LENGTH		(MAX_MOTD_CHUNK * 4)

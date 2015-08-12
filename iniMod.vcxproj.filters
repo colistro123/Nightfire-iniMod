@@ -84,13 +84,19 @@
     <ClCompile Include="amx\amxaux.c">
       <Filter>amx</Filter>
     </ClCompile>
-    <ClCompile Include="Nightfire-iniMod\format.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="amx\float.c">
       <Filter>amx</Filter>
     </ClCompile>
     <ClCompile Include="plugins.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="format.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sourcemathlib.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -159,6 +165,12 @@
       <Filter>amx</Filter>
     </ClInclude>
     <ClInclude Include="plugins.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sourcemathlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

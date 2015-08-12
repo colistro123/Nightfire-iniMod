@@ -22,6 +22,7 @@ class CCommands {
 public:
 	CCommands() { };
 	//Functions
+	int returnAddedCmdPtr(const char *name);
 	void tryFindCommand(const char* recvcmd);
 	int returnCommandParamCount(const char* params);
     //Destructor
@@ -40,4 +41,5 @@ void rconcmd_precache(const char *params);
 void rconcmd_loadplugin(const char *params);
 void rconcmd_unloadplugin(const char *params);
 void rconcmd_unloadallplugins(const char *params);
+void rconcmd_host_timescale(const char *params);
 #endif

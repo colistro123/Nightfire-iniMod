@@ -1,2 +1,0 @@
-pawncc nightfire.pwn -;+ -(+
-pause

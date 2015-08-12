@@ -129,7 +129,7 @@ void GameInterface::UTIL_ScreenFadeAll( byte r, byte g, byte b, byte a, float fa
 		if ( unknown2 == 0 ) 
 			a = 255 - a;
 		WRITE_BYTE(a);
-		__asm{
+		__asm {
 			mov ebx, flags //might be unnecessary, but keep it just in case
 			shr ebx, 0x1
 			not bl
@@ -388,7 +388,7 @@ void GameInterface::UTIL_CreateTempTextMessage(int playerid, float x, float y, b
 }
 void GameInterface::UTIL_Create_TE_ELIGHT(int edictptr, float x, float y, float z, int radius, int red, int green, int blue, int life, int decayRate ) {
 	engineModule *engine = new engineModule;
-
+	//All game versions support entity lights
 	MESSAGE_BEGIN(0, 0, SVC_TEMPENTITY, MSG_BROADCAST);
 		WRITE_BYTE( TE_ELIGHT );
 		WRITE_SHORT( engine->ENTINDEX( edictptr ) + 0x1000 );		// entity, attachment
@@ -405,63 +405,57 @@ void GameInterface::UTIL_Create_TE_ELIGHT(int edictptr, float x, float y, float 
 
 	delete engine;
 }
-void GameInterface::UTIL_Create_TE_DLIGHT(int edictptr, float x, float y, float z, float exponent, float radius, int red, int green, int blue, int life, float decayRate ) {
-	Utils *util = new Utils;
-	CBasePlayer *pPlayer = new CBasePlayer;
+void GameInterface::Create_TE_DLIGHT(int MSGTYPE, int edictptr, float x, float y, float z, float exponent, float radius, int red, int green, int blue, int life, float decayRate) {
 	engineModule *engine = new engineModule;
-	//edictptr = 0; //temporary
-	int edptr;
-	if ( edictptr == 0 ) { //send to all clients who have latest patch
-		for(int i=0; i<ReadInt32(SV_MAXCLIENTS); i++) {
-			if(pPlayer->IsClientConnected(i) && pPlayer->IsAClient(i)) {
-					edptr = pPlayer->GetEdictNum(i);
-					string gamever = pPlayer->GetUserInfoStringValue("gamever", edptr);
-					char string[64];
-					strcpy(string, util->ExplodeAndReturn(gamever, 0, " ").c_str()); 
-					if( strlen(string) > 0 && (stof((const char*)string) > 5.81f)) {
-						MESSAGE_BEGIN(edptr, 0, SVC_TEMPENTITY, MSG_ONE_UNRELIABLE); //this should be put in its own function later
-							WRITE_BYTE( TE_DLIGHT );
-							WRITE_SHORT( engine->ENTINDEX(edictptr) );
-							WRITE_COORD( x );  // origin
-							WRITE_COORD( y );
-							WRITE_COORD( z );
-							WRITE_COORD( exponent ); //brightness
-							WRITE_COORD( radius ); //radius
-							WRITE_BYTE( red ); // R
-							WRITE_BYTE( green ); // G
-							WRITE_BYTE( blue ); // B
-							WRITE_BYTE ( life ); //life
-							WRITE_COORD ( decayRate ); //decay
-						MESSAGE_END();
-					}
+	CBasePlayer *pPlayer = new CBasePlayer;
+	MESSAGE_BEGIN(edictptr, 0, SVC_TEMPENTITY, MSGTYPE);
+		WRITE_BYTE( TE_DLIGHT );
+		WRITE_SHORT( engine->ENTINDEX(edictptr) );
+		WRITE_COORD( x );  // origin
+		WRITE_COORD( y );
+		WRITE_COORD( z );
+		WRITE_COORD( exponent ); //brightness
+		WRITE_COORD( radius ); //radius
+		WRITE_BYTE( red ); // R
+		WRITE_BYTE( green ); // G
+		WRITE_BYTE( blue ); // B
+		WRITE_BYTE ( life ); //life
+		WRITE_COORD ( decayRate ); //decay
+	MESSAGE_END();	
+	delete engine;
+	delete pPlayer;
+}
+void GameInterface::UTIL_Create_TE_DLIGHT(int edictptr, float x, float y, float z, float exponent, float radius, int red, int green, int blue, int life, float decayRate ) {
+	if ( !edictptr ){
+		CBasePlayer *pPlayer = new CBasePlayer;
+		if ( !pPlayer->NumPlayersWithoutDynamicLightSupport ) {
+			//All players support dynamic lights, send a single message notifying everyone about this light
+			Create_TE_DLIGHT( MSG_BROADCAST, edictptr, x, y, z, exponent, radius, red, green, blue, life, decayRate);
+		}else{
+			//send individual messages to each client that DOES support dynamic lights, ignoring those who don't so they don't crash
+			for(int i=0; i<ReadInt32(SVS_MAXCLIENTS); i++) {
+				if(pPlayer->IsClientConnected(i) && pPlayer->IsAClient(i) && pPlayer->SupportsDynamicLights(i)) {
+					edictptr = pPlayer->GetEdictNum(i);
+					Create_TE_DLIGHT( MSG_ONE_UNRELIABLE, edictptr, x, y, z, exponent, radius, red, green, blue, life, decayRate);
+				}
 			}
 		}
-	} else { //send to ONE client if they have the latest patch
-		if ( ReadByte((pPlayer->GetClientPtr(edictptr)) + client_t::pfakeclient) == 0 ) {
+		delete pPlayer;
+	}else{ //send a private message to a specific person notifying them of this light, but only if they support dynamic lights
+		CBasePlayer *pPlayer = new CBasePlayer;
+		if ( ReadByte((pPlayer->GetClientPtr(edictptr)) + client_t::pfakeclient) == 0 ){
+			Utils *util = new Utils;
 			string gamever = pPlayer->GetUserInfoStringValue("gamever", edictptr);
 			char string[64];
 			strcpy(string, util->ExplodeAndReturn(gamever, 0, " ").c_str()); 
-			if(stof((const char*)string) > 5.81f) {
-				MESSAGE_BEGIN(edictptr, 0, SVC_TEMPENTITY, MSG_ONE_UNRELIABLE); //this should be put in its own function later
-					WRITE_BYTE( TE_DLIGHT );
-					WRITE_SHORT( engine->ENTINDEX(edictptr) );
-					WRITE_COORD( x );  // origin
-					WRITE_COORD( y );
-					WRITE_COORD( z );
-					WRITE_COORD( exponent ); //brightness
-					WRITE_COORD( radius ); //radius
-					WRITE_BYTE( red ); // R
-					WRITE_BYTE( green ); // G
-					WRITE_BYTE( blue ); // B
-					WRITE_BYTE ( life ); //life
-					WRITE_COORD ( decayRate ); //decay
-				MESSAGE_END();
+			delete util;
+			if( strlen(string) > 0 ) {
+				if ( stof((const char*)string) > 5.81f) {
+					Create_TE_DLIGHT( MSG_ONE_UNRELIABLE, edictptr, x, y, z, exponent, radius, red, green, blue, life, decayRate);
+				}
 			}
 		}
 	}
-	delete engine;
-	delete util;
-	delete pPlayer;
 }
 void GameInterface::Create_TE_EXPLOSION( float x, float y, float z, int iSprite, byte scale, byte frameRate, byte flags ) {
 	MESSAGE_BEGIN(0, 0, SVC_TEMPENTITY, MSG_PVS);

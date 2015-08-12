@@ -225,6 +225,9 @@ AMX_NATIVE_INFO gamemode_Natives[] =
 	{"UTIL_Create_TE_DLIGHT", n_UTIL_Create_TE_DLIGHT},
 	{"GetPlayerEdictPtr", n_GetPlayerEdictPtr},
 	{"Sys_FloatTime", n_Sys_FloatTime},
+	{"EyeAngles", n_EyeAngles},
+	{"WeaponAngles", n_WeaponAngles},
+	{"GetGunPos", n_GetGunPos},
     {NULL,NULL}
     /* terminator */
 };
@@ -381,7 +384,7 @@ void CNetwork::OnServerChangeMap() {
 
 	CBasePlayer *pPlayer = new CBasePlayer();
 	//Dump all the clients from the table because the map was changed..
-	for(size_t i=0; i<ReadInt32(SV_MAXCLIENTS); i++) {
+	for(size_t i=0; i<ReadInt32(SVS_MAXCLIENTS); i++) {
 		if(pPlayer->IsClientConnected(i)) {
 			if(pPlayer->IsClientOnTable(i)) {
 				OnClientDisconnect(i, REASON_MAPCHANGE);
@@ -449,6 +452,7 @@ void CNetwork::OnClientDisconnect(int playerid, int reason) {
 		printf("Couldn't find client %d in the table.\n", playerid);
 		return; //The specified client is not on the table so don't do anything..
 	}
+	pPlayer->NumPlayersWithoutDynamicLightSupport-= !pPlayer->SupportsDynamicLights(playerid);
 	printf("OnClientDisconnect(%d, %d) has been called. (%s)\n", playerid, reason, reason == 1 ? "Disconnect" : "Timeout");
 	pPlayer->UpdateClientsTable(playerid, REMOVE_FROM_TABLE); //Update the clients table since a client disconnected
 	//amx push would go below here.. (So we can push the OnClientDisconnect data to the loaded AMX script later)
@@ -555,9 +559,13 @@ void CNetwork::OnClientEquip(cell playerid) {
 /* Unrelated to the game mode calls - This does a client loop */
 void CNetwork::UpdatePlayers( void ) {
 	CBasePlayer *pPlayer = new CBasePlayer;
-	for(size_t i=0; i<ReadInt32(SV_MAXCLIENTS); i++) {
+	for(size_t i=0; i<ReadInt32(SVS_MAXCLIENTS); i++) {
 		if(pPlayer->IsClientConnected(i)) {
 			if(pPlayer->IsClientOnTable(i)) {
+				OnClientUpdate(i);
+			}else {
+				printf("CNetwork::The client was not on the table, so he or she has been added to it. id: %d\n", i);
+				pPlayer->AddPlayerToTable(i);
 				OnClientUpdate(i);
 			}
 		}

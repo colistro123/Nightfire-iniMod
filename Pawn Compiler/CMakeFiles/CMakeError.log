@@ -1,0 +1,54 @@
+Determining if the include file unistd.h exists failed with the following output:
+Change Dir: C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/CMakeTmp
+
+Run Build Command:E:\PROGRA~2\MICROS~1.0\Common7\IDE\devenv.com CMAKE_TRY_COMPILE.sln /build Debug /project cmTryCompileExec2813815698
+
+Microsoft (R) Microsoft Visual Studio 2012 Version 11.0.50727.1.
+Copyright (C) Microsoft Corp. All rights reserved.
+1>------ Build started: Project: cmTryCompileExec2813815698, Configuration: Debug Win32 ------
+1>  Microsoft (R) C/C++ Optimizing Compiler Version 17.00.50727.1 for x86
+1>  Copyright (C) Microsoft Corporation.  All rights reserved.
+1>  
+1>  cl /c /Zi /W3 /WX- /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"cmTryCompileExec2813815698.dir\Debug\\" /Fd"cmTryCompileExec2813815698.dir\Debug\vc110.pdb" /Gd /TC /analyze- /errorReport:prompt CheckIncludeFile.c
+1>  
+1>  CheckIncludeFile.c
+1>CheckIncludeFile.c(1): fatal error C1083: Cannot open include file: 'unistd.h': No such file or directory
+========== Build: 0 succeeded, 1 failed, 0 up-to-date, 0 skipped ==========
+
+
+Determining if the include file inttypes.h exists failed with the following output:
+Change Dir: C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/CMakeTmp
+
+Run Build Command:E:\PROGRA~2\MICROS~1.0\Common7\IDE\devenv.com CMAKE_TRY_COMPILE.sln /build Debug /project cmTryCompileExec70448813
+
+Microsoft (R) Microsoft Visual Studio 2012 Version 11.0.50727.1.
+Copyright (C) Microsoft Corp. All rights reserved.
+1>------ Build started: Project: cmTryCompileExec70448813, Configuration: Debug Win32 ------
+1>  Microsoft (R) C/C++ Optimizing Compiler Version 17.00.50727.1 for x86
+1>  Copyright (C) Microsoft Corporation.  All rights reserved.
+1>  
+1>  cl /c /Zi /W3 /WX- /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"cmTryCompileExec70448813.dir\Debug\\" /Fd"cmTryCompileExec70448813.dir\Debug\vc110.pdb" /Gd /TC /analyze- /errorReport:prompt CheckIncludeFile.c
+1>  
+1>  CheckIncludeFile.c
+1>CheckIncludeFile.c(1): fatal error C1083: Cannot open include file: 'inttypes.h': No such file or directory
+========== Build: 0 succeeded, 1 failed, 0 up-to-date, 0 skipped ==========
+
+
+Determining if the include file alloca.h exists failed with the following output:
+Change Dir: C:/Users/Ignacio/Desktop/Projects/Nighfire iniMod (3.2.3664)/Pawn Compiler/CMakeFiles/CMakeTmp
+
+Run Build Command:E:\PROGRA~2\MICROS~1.0\Common7\IDE\devenv.com CMAKE_TRY_COMPILE.sln /build Debug /project cmTryCompileExec3758291113
+
+Microsoft (R) Microsoft Visual Studio 2012 Version 11.0.50727.1.
+Copyright (C) Microsoft Corp. All rights reserved.
+1>------ Build started: Project: cmTryCompileExec3758291113, Configuration: Debug Win32 ------
+1>  Microsoft (R) C/C++ Optimizing Compiler Version 17.00.50727.1 for x86
+1>  Copyright (C) Microsoft Corporation.  All rights reserved.
+1>  
+1>  cl /c /Zi /W3 /WX- /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"cmTryCompileExec3758291113.dir\Debug\\" /Fd"cmTryCompileExec3758291113.dir\Debug\vc110.pdb" /Gd /TC /analyze- /errorReport:prompt CheckIncludeFile.c
+1>  
+1>  CheckIncludeFile.c
+1>CheckIncludeFile.c(1): fatal error C1083: Cannot open include file: 'alloca.h': No such file or directory
+========== Build: 0 succeeded, 1 failed, 0 up-to-date, 0 skipped ==========
+
+

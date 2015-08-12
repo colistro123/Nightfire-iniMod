@@ -172,10 +172,10 @@ void CBaseEntity::StopFollowingEntity(int edictptr) {
 	int newentptr = Instance(edictptr);
 	if ( newentptr == 0) return;
 	newentptr = ReadInt32(newentptr + 0x4);
-	WriteInt32(newentptr + 0x108, MOVETYPE_NONE ); //set the entity's movetype
-	WriteInt32(newentptr + 0x10C, NULL); //solid flags
-	WriteInt32(newentptr + 0x194, NULL); //aiment Follow
-	WriteInt32(newentptr + 0x198, NULL); //Owner
+	WriteInt32((newentptr + 0x108), MOVETYPE_NONE ); //set the entity's movetype
+	WriteInt32((newentptr + 0x10C), NULL); //solid flags
+	WriteInt32((newentptr + 0x194), NULL); //aiment Follow
+	WriteInt32((newentptr + 0x198), NULL); //Owner
 }
 /* -------------------------------------------------- Assembly / Game Engine Calls  -------------------------------------------------- */
 int CBaseEntity::CreateEntity(const char *szName, int Origin, int Angles, int owneredict) {

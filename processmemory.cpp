@@ -2,37 +2,6 @@
 #include "engine.h"
 int _memCurrent;
 
-BYTE ReadByte(DWORD Address) {
-	return *(BYTE*)Address; //typecast variable to a pointer of a byte and dereference the pointer, giving you the value from the game
-}
-void WriteInProcessByte(DWORD Address, BYTE Value) {
-	*(BYTE*)Address = Value; //typecast variable to a pointer of a byte and dereference the pointer, letting you change what it holds
-}
-void WriteInProcessFloat(DWORD Address, FLOAT Value) {
-	*(FLOAT*)Address = Value; //typecast variable to a pointer of a byte and dereference the pointer, letting you change what it holds
-}
-void WriteInProcessInt32(DWORD Address, INT32 Value) {
-	*(INT32*)Address = Value; //typecast variable to a pointer of a byte and dereference the pointer, letting you change what it holds
-}
-void WriteInProcessChar(DWORD Address, CHAR Value) {
-	*(char*)Address = Value; //typecast variable to a pointer of a byte and dereference the pointer, letting you change what it holds
-}
-FLOAT ReadFloat(DWORD Address) {
-	return *(FLOAT*)Address;
-}
-double ReadDouble(DWORD Address){
-	return *(double*)Address;
-}
-int	ReadInt(DWORD Address){
-	return *(UINT*)Address;
-}
-//New
-UINT32 ReadInt32(DWORD Address){
-	return *(UINT32*)Address;
-}
-void WriteInt32(DWORD Address, UINT32 Value) {
-	*(UINT32*)Address = Value; //typecast variable to a pointer of a byte and dereference the pointer, letting you change what it holds
-}
 void WriteMem(DWORD dwOffset, DWORD dwValue, int len){
     unsigned long Protection;    
     VirtualProtect((void*)dwOffset, 1, PAGE_READWRITE, &Protection);
@@ -88,26 +57,6 @@ void WriteCharArray(DWORD Address, char * string, bool ZeroTheEnd){
 	}
 }
 //enums
-BYTE memGetByte(int ptr){
-    return ReadByte(_memCurrent + ptr);
-}
-BYTE memGetInt(int ptr){
-    return ReadInt32(_memCurrent + ptr);
-}
-std::string memGetCharArray(int ptr){
-	return ReadCharArray(_memCurrent + ptr, 512);
-}
-FLOAT memGetFloat(int ptr) {
-	return ReadByte(_memCurrent + ptr);
-}
-//end of enums
-//stack
-void memSetPtr(int ptr) {
-    _memCurrent = ptr;
-}
-int memGetPtr() {
-     return _memCurrent;
-}
 void memOpen(int ptr){
 	_memStack stack;
     stack.push(_memCurrent);
@@ -121,7 +70,7 @@ void memClose(){
 //server
 void WRITE_BYTE(int value){
 	DWORD func = ADR_WRITE_BYTE;
-	__asm {
+	 __asm {
 		push value
 		call func
 		add esp,4

@@ -8,6 +8,7 @@
 #include "gameinterface.h"
 #include "utils.h"
 #include "plugins.h"
+#include "gettime.h"
 
 //Global variables 
 BYTE *retJMP;
@@ -20,6 +21,7 @@ float tempFloat3 = 0;
 float tempFloat4 = 0;
 float tempFloat5 = 0;
 float tempFloat6 = 0;
+byte tempByte1 = 0;
 DWORD tempRegister = 0;
 DWORD tempRegister2 = 0;
 DWORD tempRegister3 = 0;
@@ -35,6 +37,7 @@ DWORD tempESP;
 DWORD tempEBP;
 DWORD tempEIP;
 DWORD tempEFL;
+DWORD tempCall = 0;
 char value[1024] = {0};
 typedef struct {
 	BYTE *address;
@@ -44,8 +47,8 @@ typedef struct {
 } HookCallInfo;
 
 HookCallInfo funcHooks[] = {
-	{(BYTE*)ADR_INVALID_CMD, (DWORD)OnCommandProcess, 6, (BYTE*)ADR_INVALID_CMD+0x5}, //patch address, return function (our code), length, return jump address
-	{(BYTE*)ADR_CHANGEMAP_FN, (DWORD)hookOnServerChangeMap, 6, (BYTE*)ADR_CHANGEMAP_FN+0x5},
+	//{(BYTE*)ADR_INVALID_CMD, (DWORD)OnCommandProcess, 6, (BYTE*)ADR_INVALID_CMD+0x5}, //patch address, return function (our code), length, return jump address
+	{(BYTE*)ADR_CHANGEMAP_FN, (DWORD)hookOnServerChangeMap, 6, (BYTE*)ADR_CHANGEMAP_FN+0x5}, //something is fishy with this function in release mode, causing mod_loadbrush errors when clients join!
 	{(BYTE*)ADR_CONNECT_FN, (DWORD)hookOnClientConnect, 6, (BYTE*)ADR_CONNECT_FN+0x5},
 	{(BYTE*)ADR_DROPCLIENT_HOOK, (DWORD)hookOnClientDisconnect, 6, (BYTE*)ADR_DROPCLIENT_HOOK+0x5}, //Deprecated, now uses ADR_DROPCLIENT_FN
 	{(BYTE*)ADR_TRIGGER_EVT, (DWORD)OnTriggerEvent, 6, (BYTE*)ADR_TRIGGER_EVT+0x5},
@@ -59,7 +62,11 @@ HookCallInfo funcHooks[] = {
 	{(BYTE*)ADR_FIRE_BULLETS, (DWORD)hookOnFireBullets, 6, (BYTE*)ADR_FIRE_BULLETS+0x5},
 	{(BYTE*)ADR_INIT_HUD, (DWORD)hookOnHudInit, 6, (BYTE*)ADR_INIT_HUD+0x5},
 	{(BYTE*)ADR_FAKECLIENTMAPCHANGE, (DWORD)hookOnDropFakeClient, 6, (BYTE*)ADR_FAKECLIENTMAPCHANGE+0x5}, //This gets called when a fake client gets kicked
-	{(BYTE*)ADR_RECONNECT_FN, (DWORD)hookOnClientReconnect, 8, (BYTE*)ADR_RECONNECT_FN+0x5}
+	{(BYTE*)ADR_RECONNECT_FN, (DWORD)hookOnClientReconnect, 8, (BYTE*)ADR_RECONNECT_FN+0x5},
+	//{(BYTE*)ADR_HOST_RUNFRAME, (DWORD)hookOn_Host_RunFrame, 0x0A, (BYTE*)ADR_HOST_RUNFRAME+0x5},
+	//{(BYTE*)ADR_MAINRUNFRAME, (DWORD)hookOnMainRunFrame, 0x0A, (BYTE*)ADR_MAINRUNFRAME+0x5},
+	{(BYTE*)ADR_SV_DISCONNECTCLIENT, (DWORD)hookOnSV_DisconnectClient, 5, (BYTE*)ADR_SV_DISCONNECTCLIENT+0x5},
+	{(BYTE*)ADR_NEW_INVALID_CMD, (DWORD)hookOnInvalidCommand, 5, (BYTE*)ADR_NEW_INVALID_CMD+0x5}
 	//{(BYTE*)ADR_PLAYERSUICIDED_FN, (DWORD)hookOnPlayerSuicided, 6, (BYTE*)ADR_PLAYERSUICIDED_FN+0x5}
 };
 
@@ -112,7 +119,7 @@ __declspec(naked) void OnTriggerEvent() {
 		__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 		__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 		__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-		__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+		__asm mov eax, dword ptr ds:[eax + useridoffset] //store userid in eax
 		__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
 		callGMModule(tempRegister2, tempEDI);
 	invalid:
@@ -131,8 +138,18 @@ __declspec(naked) void OnTriggerEvent() {
 __declspec(naked) void hookOnServerChangeMap() {
 	//retJMP = getHookFuncJMPAddr((DWORD)hookOnClientConnect);
 	//if(retJMP) { //If retJMP is not a valid address, it'll crash
+		__asm {
+			push eax
+			push ecx
+			push edx
+		}
 		callOnServerChangeMap("");
-		__asm retn
+		__asm {
+			pop edx
+			pop ecx
+			pop eax
+			retn
+		}
 		//__asm mov dword ptr ds:[tempRegister], ebx
 		
 		//__asm add esp,0x14
@@ -176,16 +193,30 @@ __declspec(naked) void hookOnMapLoaded() {
 	__asm jmp retJMP
 }
 __declspec(naked) void hookOnClientConnect() {
+	__asm {
+		MOV ECX,DWORD PTR DS:[host_client]
+		mov ECX, dword ptr ds:[ECX + useridoffset] //store userid in edx
+		mov dword ptr ds:[tempECX], ecx //store userid into tempRegister
+	}
+	callOnClientConnect(tempECX);
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnClientConnect);
+	__asm {
+		MOV ECX,DWORD PTR DS:[host_client] //restore intercepted code
+		jmp retJMP
+	}
+	/*
+		//old stuff used with address 0x4308BA29
 		__asm add esp,0x0A4C //restore original value since we intercepted
 		__asm push edx //store the old value of edx
 		__asm test eax, eax
 		__asm je eaxis0 //player disconnected before finishing or invalid password entered
-			__asm mov edx, dword ptr ds:[eax + 0x4b80] //store userid in edx
+			__asm mov edx, dword ptr ds:[eax + client_t::puserid] //store userid in edx
 			__asm mov dword ptr ds:[tempRegister], edx //store userid into tempRegister
-			callOnPreClientConnect(tempRegister);
+			callOnClientConnect(tempRegister);
 		eaxis0:
 		__asm pop edx //restore old value of edx
 		__asm retn
+	*/
 }
 __declspec(naked) void hookOnClientReconnect() { //client already has a slot, reconnect him using the same one
 		__asm {
@@ -233,9 +264,9 @@ __declspec(naked) void hookOnBotConnect() {
 					__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 					__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 					__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-					__asm mov edx, dword ptr ds:[eax + 0x4b80] //store userid in edx
+					__asm mov edx, dword ptr ds:[eax + useridoffset] //store userid in edx
 					__asm mov dword ptr ds:[tempRegister], edx //store userid into tempRegister
-					callOnPreClientConnect(tempRegister);
+					callOnClientConnect(tempRegister);
 invalid:
 			__asm pop edx
 			__asm pop eax
@@ -333,7 +364,9 @@ __declspec(naked) void hookOnFireBullets() {
 		//mov tempRegister3, ebx
 		//mov tempRegister4, ecx
 	}
-	callOnFireBullets(tempRegister, Vector(tempFloat1, tempFloat2, tempFloat3), Vector(tempFloat4, tempFloat6, 0), tempFloat5);
+
+	callOnFireBullets(tempRegister, tempFloat1, tempFloat2, tempFloat3, tempFloat4, tempFloat6, 0, tempFloat5);
+
 	retJMP = getHookFuncJMPAddr((DWORD)hookOnFireBullets);
 
 	__asm {
@@ -400,7 +433,7 @@ __declspec(naked) void hookOnHostSay() {
 			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov eax, dword ptr ds:[eax + useridoffset] //store userid in eax
 			__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
 	invalid:
 	__asm mov ecx, dword ptr ds:[tempECX]
@@ -417,7 +450,27 @@ __declspec(naked) void hookOnHostSay() {
 	callTextModule(tempRegister2, tempRegister); //User, address of text
 	__asm jmp retJMP
 }
-
+__declspec(naked) void hookOnInvalidCommand() {
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnInvalidCommand);
+	if(retJMP) { //If retJMP is not a valid address, it'll crash
+		__asm pushad
+		__asm test ebx, ebx
+		__asm je InvalidEBX
+			__asm mov dword ptr ds:[tempRegister], ebx
+			__asm mov tempRegister2, ebx
+			__asm mov ebx, dword ptr ds:[tempRegister] //restore the register to the original value
+			callConCommandModule(tempRegister2);
+		InvalidEBX:
+		__asm popad
+		__asm push eax
+		__asm mov eax, 0x430439F0 //CON_DPrintf
+		__asm call eax
+		__asm pop eax
+		__asm jmp retJMP
+		memset(value, 0, sizeof(value));
+	}
+}
+/*
 __declspec(naked) void OnCommandProcess() {
 	retJMP = getHookFuncJMPAddr((DWORD)OnCommandProcess);
 	if(retJMP) { //If retJMP is not a valid address, it'll crash
@@ -433,6 +486,7 @@ __declspec(naked) void OnCommandProcess() {
 		memset(value, 0, sizeof(value));
 	}
 }
+*/
 __declspec(naked) void hookOnPlayerKilled() {
 	//EBX = Killer | ESI = Player Killed (Victim)
 	tempRegister = NUM_FOR_EDICT;
@@ -448,7 +502,7 @@ __declspec(naked) void hookOnPlayerKilled() {
 			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov eax, dword ptr ds:[eax + useridoffset] //store userid in eax
 			__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
 	//For EBX
 	__asm push ebx //edictptr
@@ -458,7 +512,7 @@ __declspec(naked) void hookOnPlayerKilled() {
 			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov eax, dword ptr ds:[eax + useridoffset] //store userid in eax
 			__asm mov dword ptr ds:[tempRegister], eax //store userid into tempRegister
 	invalid:
 	retJMP = getHookFuncJMPAddr((DWORD)hookOnPlayerKilled);
@@ -488,7 +542,7 @@ __declspec(naked) void hookOnPlayerSuicided() { //TO FIX, INSTA CRASH, DOESN'T W
 			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov eax, dword ptr ds:[eax + useridoffset] //store userid in eax
 			__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
 	invalid:
 
@@ -522,7 +576,7 @@ __declspec(naked) void hookOnPlayerSpawn() {
 			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov eax, dword ptr ds:[eax + useridoffset] //store userid in eax
 			__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
 	invalid:
 
@@ -559,7 +613,7 @@ __declspec(naked) void hookOnPlayerEquip() {
 			__asm mov ecx,dword ptr ds:[0x44A86B4C] //get the first playerptr
 			__asm imul eax, eax, 0x4F18 //integer multiply number by size of tablebuffer
 			__asm lea eax, [ecx+eax-0x4F18] //get THIS player pointer
-			__asm mov eax, dword ptr ds:[eax + 0x4b80] //store userid in eax
+			__asm mov eax, dword ptr ds:[eax + useridoffset] //store userid in eax
 			__asm mov dword ptr ds:[tempRegister2], eax //store userid into tempRegister
 	invalid:
 
@@ -582,6 +636,90 @@ __declspec(naked) void hookOnPlayerEquip() {
 	__asm retn 4
 	
 	//__asm jmp retJMP
+}
+__declspec(naked) void hookOn_Host_RunFrame() {
+	__asm {
+		//mov tempEAX, eax
+		mov tempEBX, ebx
+		//mov tempECX, ecx
+		mov tempEDX, edx
+		mov tempEDI, edi
+		mov tempESI, esi
+		mov tempEBP, ebp
+		mov dword ptr ds:[tempECX], ecx
+		fld dword ptr ds:[tempECX] //time
+		fstp dword ptr ds :[tempFloat1]
+	}
+	tempByte1 = callOn_Host_RunFrame(tempFloat1);
+	retJMP = getHookFuncJMPAddr((DWORD)hookOn_Host_RunFrame);
+
+	__asm {
+		//mov eax, tempEAX
+		mov ebx, tempEBX
+		//mov ecx, tempECX
+		mov edx, tempEDX
+		mov edi, tempEDI
+		mov esi, tempESI
+		mov ebp, tempEBP
+		mov al, tempByte1
+		//4217A168
+		//add esp, 0x0
+		//mov eax, dword ptr ds:[0x4217a168]
+		jmp retJMP //jump to original code
+	}
+}
+__declspec(naked) void hookOnMainRunFrame() {
+	__asm {
+		mov tempEAX, eax
+		mov tempEBX, ebx
+		mov tempECX, ecx
+		mov tempEDX, edx
+		mov tempEDI, edi
+		mov tempESI, esi
+		mov tempEBP, ebp
+		fld dword ptr ds:[tempEAX]
+		fstp dword ptr ds:[tempFloat1] //store frametime
+	}
+	tempByte1 = callOnMainRunFrame(tempFloat1);
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnMainRunFrame);
+
+	__asm {
+		mov eax, tempEAX
+		mov ebx, tempEBX
+		mov ecx, tempECX
+		mov edx, tempEDX
+		mov edi, tempEDI
+		mov esi, tempESI
+		mov ebp, tempEBP
+		
+		cmp tempByte1, 0
+		jnz RunFrame
+			add esp,0x0c
+			jmp retJMP //jump to original code
+RunFrame:
+		mov eax, dword ptr ds:[tempFloat2]
+		push eax
+		mov eax, 0x43059090
+		call eax
+		//call dword ptr ds:[0x41b608] //host_runframe which then calls _host_runframe
+		add esp,0x10
+	}
+		retJMP = getHookFuncJMPAddr((DWORD)hookOnMainRunFrame);
+		__asm jmp retJMP
+}
+__declspec(naked) void hookOnSV_DisconnectClient() {
+	__asm { 
+		mov dword ptr ss:[esp - 4], eax
+		mov eax, dword ptr ss:[esp+0x10]
+		mov tempEAX, eax
+		mov eax, dword ptr ss:[esp - 4]
+	}
+	callOnSV_DisconnectClient(tempEAX);
+	retJMP = getHookFuncJMPAddr((DWORD)hookOnSV_DisconnectClient);
+	__asm {
+		MOV EAX,DWORD PTR DS:[0x42179EFC] //restore what we intercepted
+		jmp retJMP
+	}
 }
 //Text
 void callTextModule(int nfuserid, DWORD ebx) {
@@ -624,7 +762,7 @@ void callOnServerChangeMap( const char* recvcmd ) {
 	//memset(value, 0, sizeof(value));
 	//value[0] = 0;
 }
-void callOnPreClientConnect(int pPointer) {
+void callOnClientConnect(int pPointer) {
 	CNetwork *cNetwork = new CNetwork;
 	CBasePlayer *pPlayer = new CBasePlayer;
 	CPlugins *plugin = new CPlugins;
@@ -689,31 +827,41 @@ void callOnClientTimeOut(int edict) {
 	delete pPlayer;
 	*/
 }
-void callOnFireBullets(int edict, Vector vecSrc, Vector vecShootDir, float dist) {
-	CNetwork *cNetwork = new CNetwork;
+#include "sourcemathlib.h"
+void callOnFireBullets(int edict, float vecSrcX, float vecSrcY, float vecSrcZ, float vecShootDirX, float vecShootDirY, float vecShootDirZ, float dist) {
+	GameInterface *gui = new GameInterface;
+#if DEBUG
 	CBasePlayer *pPlayer = new CBasePlayer;
 	engineModule *engine = new engineModule;
-	GameInterface *gui = new GameInterface;
 	int playerid = pPlayer->GetPlayerUserID(edict);
 	playerid = pPlayer->GetInternalIDFromNFID(playerid); //Convert NFID to InternalID
-	float X, Y, Z, screenX, screenY;
-	X = Vector(vecSrc).x;
-	Y = Vector(vecSrc).y;
-	Z = Vector(vecSrc).z;
-	screenX = Vector(vecShootDir).x;
-	screenY = Vector(vecShootDir).y;
-	//Vector vecAbsEnd;
-	printf("callOnFireBullets(%d, X:%f, Y:%f, Z:%f, ScreenX:%f, ScreenY:%f, Dist:%f)\n", playerid, (float)X, (float)Y, (float)Z, (float)screenX, (float)screenY, (float)dist);
-	//engine->UTIL_TraceLine(edict, vecSrc, vecAbsEnd, 0, 0);
-	//
-	//gui->UTIL_Create_TE_DLIGHT(edict, X , Y ,Z, 200, 255, 255, 255, 2000, 0 );
-	gui->UTIL_Create_TE_ELIGHT(edict, X, Y, Z, 1000, 255, 255, 192, 1, 0 );
-	gui->UTIL_Create_TE_DLIGHT(0, X, Y, Z, 20.0, 500.0, 255, 255, 192, 1, 5 );
-	gui->UTIL_ScreenShake(playerid, ~pPlayer->GetFlags(playerid) & FL_DUCKING ? 200 : screenY < 0.05f || screenY > 0.05f ? 5000*((screenX < 0 ? -screenX : screenX)*(screenY < 0 ? -screenY : screenY)) : 2500, 1, 200, 2, 0);
+	//printf("callOnFireBullets(%d, X:%f, Y:%f, Z:%f, ScreenX:%f, ScreenY:%f, Dist:%f)\n", playerid, vecSrcX, vecSrcY, vecSrcZ, vecShootDirX, vecShootDirY, (float)dist);
+
+	//Vector vecSrc = pPlayer->GetGunPos(edict); //getgunpos is correct
+	
+	Vector vecSrc; 
+	pPlayer->GetPlayerPos(playerid, vecSrc.x, vecSrc.y, vecSrc.z);
+	/*
+	engine->UTIL_MakeVectors( pPlayer->v_angle(edict) );
+	Vector vecAiming = engine->v_forward(); //+ pPlayer->punchangle(edict);
+	*/
+	Vector vecAiming;
+	AngleVectors(pPlayer->EyeAngles(edict), &vecAiming);
+
+	trace_t tr;
+	engine->UTIL_TraceLine(vecSrc, vecSrc + vecAiming * 8192, 0, 0, edict, tr);
+	gui->UTIL_Create_TE_DLIGHT(0, tr.endpos.x , tr.endpos.y , tr.endpos.z, 2, 125, 255, 255, 255, 50, 50.0f );
+	gui->UTIL_Create_TE_ELIGHT(edict, tr.endpos.x, tr.endpos.y,tr.endpos.z, 100, 255, 255, 170, 1, 100 );
+	//gui->UTIL_ScreenShake(playerid, ~pPlayer->GetFlags(playerid) & FL_DUCKING ? 200 : screenY < 0.05f || screenY > 0.05f ? 5000*((screenX < 0 ? -screenX : screenX)*(screenY < 0 ? -screenY : screenY)) : 2500, 1, 200, 2, 0);
 	//gui->UTIL_ScreenShake(playerid, pPlayer->GetFlags(playerid) & IN_DUCK ? 50 : 5000, 1, 250, 2, 0);
-	delete cNetwork;
 	delete pPlayer;
 	delete engine;
+#else
+	engineModule *engine = new engineModule;
+	gui->UTIL_Create_TE_DLIGHT(0, vecSrcX , vecSrcY , vecSrcZ, 2, 125, 255, 255, 170, 1, 100.0f );
+	gui->UTIL_Create_TE_ELIGHT(edict, vecSrcX, vecSrcY, vecSrcZ, 100, 255, 255, 170, 1, 100 );
+	delete engine;
+#endif
 	delete gui;
 }
 void callOnHudInit(int edictPtr) {
@@ -750,4 +898,83 @@ void callOnClientReconnect(int edict) {
 	cNetwork->OnClientReconnect(playerid);
 	delete pPlayer;
 	delete cNetwork;
+}
+bool callOn_Host_RunFrame(float time) {
+	//Nightfire's Method
+	/*
+	//Host_AccumulateTime
+	double realtime = time + ReadDouble(0x448BE138);
+	WriteInProcessDouble(REALTIME_ADR, realtime);
+
+
+	//Host_FilterTime
+	float fpsmaxft = (1 / float(ReadInt(0x448be624 + 0x14)));
+	float host_frametime = (realtime - m_flPreviousTime);
+	if ( host_frametime >= (fpsmaxft) ){
+		m_flPreviousTime = realtime;
+		host_frametime = min( host_frametime, MAX_FRAMETIME );
+		host_frametime = max( host_frametime, MIN_FRAMETIME );
+		WriteInProcessDouble(HOST_FRAMETIME_ADR, host_frametime);
+		return 1;
+	}else{
+		return 0;
+	}
+	*/
+
+
+	//Source 2007 Method
+	engineModule *engine = new engineModule;
+	engine->Host_AccumulateTime(time);
+	engine->Host_CalculateTimeDelta();
+	delete engine;
+	return 1; //tell the engine to always run this frame since we don't filter time in the old spot anymore
+}
+//static double			m_flCurrentTime;
+//static double			m_flPreviousTime;
+static double m_flFrameTime;
+bool callOnMainRunFrame(float frametime){
+
+	engineModule *engine = new engineModule;
+	engine->GetTickInterval();
+
+	//Not needed because Bond_ded does this for us, no need to waste cpu cycles doing it again
+	/*
+	// Get current time
+	m_flCurrentTime	= Sys_FloatTime();
+	// Determine dt since we last checked
+	float dt = m_flCurrentTime - m_flPreviousTime;
+	// Remember old time
+	m_flPreviousTime = m_flCurrentTime;
+	// Accumulate current time delta into the true "frametime"
+	m_flFrameTime += dt;
+	*/
+
+	m_flFrameTime += frametime;
+	/*
+	// If the time is < 0, that means we've restarted. 
+	// Set the new time high enough so the engine will run a frame 
+	if ( m_flFrameTime < 0.0f ){
+		tempFloat1 = m_flFrameTime;
+		return 1;
+	}*/
+
+	bool runframe = engine->FilterTime(m_flFrameTime);
+	if ( runframe ){
+		tempFloat2 = m_flFrameTime;
+		m_flFrameTime = 0;
+	}
+	delete engine;
+	return runframe;
+
+
+}
+void callOnSV_DisconnectClient(int edict){
+	__asm mov dword ptr ds:[tempESP], esp //compiler is messing up ESP!!
+	engineModule *engine = new engineModule;
+	int clientptr = engine->SV_EdictToClient(edict);
+	delete engine;
+	if ( clientptr ) {
+		callOnClientDisconnect(clientptr);
+	}
+	__asm mov esp, dword ptr ds:[tempESP]
 }

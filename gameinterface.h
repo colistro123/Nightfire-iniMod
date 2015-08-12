@@ -74,6 +74,9 @@ public:
 	void UTIL_CreateTracer(int playerid, float xStart, float yStart, float zStart, float xEnd, float yEnd, float zEnd, int towho); //Create a tracer
 	void UTIL_CreateBeamEntsPlayers(int playerid, int toplayerid, int spriteindex, byte startframe, byte frame, byte life, byte width, byte noise, byte r, byte g, byte b, byte bright, byte scroll, int msgtype);
 	void UTIL_CreateTempTextMessage(int playerid, float x, float y, byte effect, byte textR, byte textG, byte textB, byte textA, byte fxR, byte fxG, byte fxB, byte fxA, short fadein, short fadeout, short holdtime, short fxtime, char *message, int msgtype);
+private:
+	void Create_TE_DLIGHT(int MSGTYPE, int edictptr, float x, float y, float z, float exponent, float radius, int red, int green, int blue, int life, float decayRate);
+public:
 	void UTIL_Create_TE_ELIGHT(int edictptr, float x, float y, float z, int radius, int red, int green, int blue, int life, int decayRate ); //Create entity lights
 	void UTIL_Create_TE_DLIGHT(int edictptr, float x, float y, float z, float exponent, float radius, int red, int green, int blue, int life, float decayRate );
 	void Create_TE_EXPLOSION( float x, float y, float z, int iSprite, byte scale, byte frameRate, byte flags );

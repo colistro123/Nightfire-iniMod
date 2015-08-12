@@ -56,6 +56,8 @@ typedef struct _PlayerInfo {
 	UINT8 pedicts;// Table - open with memOpen
 	string pname;
 	int puserid;
+	float gamever;
+	bool supportsdynamiclights;
 	string puserinfo;
 	int pconnecttime;
 	UINT8 plagcompensation;
@@ -85,6 +87,7 @@ enum client_t {             //Client
 	plagcompensation = 0x4F10,
 	pnext_messageinterval = 0x3568,// 'cl_updaterate
 };
+#define useridoffset 0x4B80 //this is bad, but useful to be able to use it in inline assembly
 enum edict {                  //'Entity
 	pentity = 0x11C, // Table - open with memOpen
 	pkills = 644,
@@ -101,6 +104,12 @@ enum player {              //Player
 	phealth = 0x160,
 	pctfscore1 = 0xB68,
 	pctfscore2 = 0xB6C, //both ctf scores are identical, who knows why
+	peyeanglesx = 0x74,
+	peyeanglesy = 0x78,
+	peyeanglesz = 0x7C,
+	pweaponanglesx = 0x50,
+	pweaponanglesy = 0x54,
+	pweaponanglesz = 0x58,
 };
 
 class CBasePlayer {
@@ -109,6 +118,12 @@ public:
     //Destructor
     virtual ~CBasePlayer() { };
 	//Functions
+
+	Vector GetGunPos(int edict );
+	Vector EyeAngles(int edict );	
+	Vector WeaponAngles(int edict );
+	Vector v_angle( int edictptr );
+	Vector punchangle( int edictptr );
 	void SetPlayerHealth(int playerid, int percent);
 	float GetPlayerHealth( int playerid );
 	int GetPlayerDeaths( int playerid );
@@ -119,8 +134,10 @@ public:
 	int OnClientSpawn( int playerid );
 	int OnClientEquip(int playerid);
 	void ProcessClientsOnMapLoad( void );
-	int IsClientConnected( int playerid );
-	int IsAClient( int playerid );
+	bool SupportsDynamicLights( int playerid );
+	float GetGameVer( int playerid );
+	bool IsClientConnected( int playerid );
+	bool IsAClient( int playerid );
 	void AddPlayerToTable(int playerid );
 	int IsClientOnTable( int playerid ); //This one checks if they're on the table while the other one checks if they're connected as well ** existing clients **
 	int IsClientOnTableByNFID ( int playerid );
@@ -128,7 +145,7 @@ public:
 	void UpdateClientsTable( int playerid, int option );
 	void ShowConnectedClients( void );
 	void UpdateClients( void );
-	virtual int MaxClients() { return (UINT32)ReadInt32(SV_MAXCLIENTS); } //These are the max clients on the server
+	virtual int MaxClients() { return (UINT32)ReadInt32(SVS_MAXCLIENTS); } //These are the max clients on the server
 	virtual int NumClients() { return (UINT32)ReadInt32(SV_NUMCLIENTS); } //These are the clients on the server
 	string FetchInfoForPlayerID( int playerid );
 	void ClientCommand(char *text, int edictptr);
@@ -159,9 +176,10 @@ public:
 	void CheckTimeOut(int playerid);
 	int DisconnectClient(int playerid, const char* szReason = "");
 	int GetFlags(int playerid); //This is supposed to get a player's flags
-	bool IsValidPlayerID(int playerid) { return playerid == INVALID_USERID ? false : true; }
+	inline bool IsValidPlayerID(int playerid) { return playerid == INVALID_USERID ? false : true; }
 	//definitions
 	//static int cptr;
+	static int NumPlayersWithoutDynamicLightSupport;
 	static int edictptr;
 	//static int ptr;
 	static double curtime;
@@ -295,5 +313,71 @@ static cell AMX_NATIVE_CALL n_GetPlayerEdictPtr(AMX *amx, const cell *params) {
 	int edictptr = pPlayer->GetEdictNum(params[1]);
 	delete pPlayer;
 	return edictptr;
+}
+static cell AMX_NATIVE_CALL n_EyeAngles(AMX *amx, const cell *params) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	float X, Y, Z;
+	int edptr = pPlayer->getPointerForPlayerID(params[1]);
+	if(!edptr) return 0;
+	
+	edptr = ReadInt32(edptr + client_t::pedicts);
+
+	X = (float)pPlayer->EyeAngles(edptr).x;
+	Y = (float)pPlayer->EyeAngles(edptr).y;
+	Z = (float)pPlayer->EyeAngles(edptr).z;
+
+	cell* dest[3] = {NULL, NULL, NULL};
+	for(int i=0; i<3; i++) {
+		amx_GetAddr(amx, params[i+2], &dest[i]);
+	}
+	*dest[0] = amx_ftoc(X);
+	*dest[1] = amx_ftoc(Y);
+	*dest[2] = amx_ftoc(Z);
+	delete pPlayer;
+	return true;
+}
+static cell AMX_NATIVE_CALL n_WeaponAngles(AMX *amx, const cell *params) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	float X, Y, Z;
+	int edptr = pPlayer->getPointerForPlayerID(params[1]);
+	if(!edptr) return 0;
+	
+	edptr = ReadInt32(edptr + client_t::pedicts);
+
+	X = (float)pPlayer->WeaponAngles(edptr).x;
+	Y = (float)pPlayer->WeaponAngles(edptr).y;
+	Z = (float)pPlayer->WeaponAngles(edptr).z;
+
+	cell* dest[3] = {NULL, NULL, NULL};
+	for(int i=0; i<3; i++) {
+		amx_GetAddr(amx, params[i+2], &dest[i]);
+	}
+	*dest[0] = amx_ftoc(X);
+	*dest[1] = amx_ftoc(Y);
+	*dest[2] = amx_ftoc(Z);
+	delete pPlayer;
+	return true;
+}
+static cell AMX_NATIVE_CALL n_GetGunPos(AMX *amx, const cell *params) {
+	CBasePlayer *pPlayer = new CBasePlayer;
+	float X, Y, Z;
+	int edptr = pPlayer->getPointerForPlayerID(params[1]);
+	if(!edptr) return 0;
+	
+	edptr = ReadInt32(edptr + client_t::pedicts);
+
+	X = (float)pPlayer->GetGunPos(edptr).x;
+	Y = (float)pPlayer->GetGunPos(edptr).y;
+	Z = (float)pPlayer->GetGunPos(edptr).z;
+
+	cell* dest[3] = {NULL, NULL, NULL};
+	for(int i=0; i<3; i++) {
+		amx_GetAddr(amx, params[i+2], &dest[i]);
+	}
+	*dest[0] = amx_ftoc(X);
+	*dest[1] = amx_ftoc(Y);
+	*dest[2] = amx_ftoc(Z);
+	delete pPlayer;
+	return true;
 }
 #endif
